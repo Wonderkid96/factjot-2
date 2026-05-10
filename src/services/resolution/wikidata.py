@@ -20,13 +20,17 @@ class WikidataEntity:
     wikimedia_category: str | None
 
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
+@retry(stop=stop_after_attempt(2), wait=wait_exponential(min=1, max=5))
 def _sparql(query: str) -> dict[str, Any]:
+    """Wikidata's free SPARQL endpoint is rate-limited and frequently slow.
+    Entity resolution is enrichment, not blocking — we'd rather skip this beat's
+    Wikidata boost than burn 90s per timeout. 10s * 2 retries = 20s worst case.
+    """
     r = requests.get(
         SPARQL_ENDPOINT,
         params={"query": query, "format": "json"},
         headers={"User-Agent": "FactJotV2/0.1 (https://github.com/factjot)"},
-        timeout=30,
+        timeout=10,
     )
     r.raise_for_status()
     return r.json()

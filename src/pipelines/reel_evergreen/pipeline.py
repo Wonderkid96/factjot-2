@@ -22,7 +22,7 @@ from src.services.curation.script_writer import generate_script
 from src.services.discovery.models import DiscoveredCandidate
 from src.services.discovery.orchestrator import discover_candidates
 from src.services.narration.elevenlabs import ElevenLabsNarrator, NarrationResult
-from src.services.render.remotion import render_via_remotion, render_still_via_remotion
+from src.services.render.remotion import render_via_remotion, render_still_via_remotion, OUTRO_TEXT
 from src.services.resolution.era import era_compatible
 from src.services.resolution.wikidata import resolve_entity
 from src.services.sourcing.orchestrator import source_for_beat

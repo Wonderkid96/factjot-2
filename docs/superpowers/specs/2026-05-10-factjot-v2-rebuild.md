@@ -48,7 +48,7 @@ The constraints that make this safe:
 - No web dashboard, no analytics UI (use platform-native + git history)
 - No vector-DB topic dedup (file-based ledgers are sufficient at v1's volume)
 - No multi-language narration
-- No new brand identity (v2 inherits voice ID `3WqHLnw80rOZqJzW9YRB` and v1's `brand_kit.json`)
+- No new brand identity (v2 inherits the voice from `.env` `ELEVENLABS_VOICE` and v1's `brand_kit.json`; the live ID is the single source-of-truth in the env file, never duplicated in docs)
 
 ## 5. Hard constraints (user-imposed, non-negotiable)
 
@@ -370,7 +370,7 @@ These are non-negotiable in v2:
 │   │   │   ├── haiku.py           # Haiku selector (image)
 │   │   │   └── scoring.py         # deterministic scoring
 │   │   ├── narration/
-│   │   │   └── elevenlabs.py      # eleven_v3, voice 3WqHLnw80rOZqJzW9YRB, 48kHz
+│   │   │   └── elevenlabs.py      # eleven_v3, voice from .env ELEVENLABS_VOICE, 48kHz
 │   │   ├── render/
 │   │   │   └── remotion.py        # Python wrapper that calls Node subprocess
 │   │   ├── publish/
@@ -429,7 +429,7 @@ These are non-negotiable in v2:
 | Render templates | TypeScript / React (Remotion 5) |
 | LLM agent | Claude Sonnet 4.6 (Anthropic SDK, with prompt caching) |
 | LLM verification | Claude Opus 4.7 (cross-check) and Haiku 4.5 (vision) |
-| TTS | ElevenLabs `eleven_v3`, voice ID `3WqHLnw80rOZqJzW9YRB`, 48kHz resample |
+| TTS | ElevenLabs `eleven_v3`, voice from `.env` `ELEVENLABS_VOICE`, 48kHz resample |
 | Image sourcing (9 providers, ported from v1) | Wikimedia, Wikipedia, Smithsonian, NASA, iNaturalist, Pixabay, Pexels, Openverse, TMDB |
 | Entity resolution | Wikidata + Wikipedia |
 | Render | Remotion (Node subprocess), FFmpeg under the hood |

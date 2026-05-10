@@ -10,7 +10,7 @@ class Settings(BaseSettings):
 
     # Narration
     elevenlabs_api_key: str = Field(..., alias="ELEVENLABS_API_KEY")
-    elevenlabs_voice: str = Field(default="3WqHLnw80rOZqJzW9YRB", alias="ELEVENLABS_VOICE")
+    elevenlabs_voice: str = Field(..., alias="ELEVENLABS_VOICE")
 
     # Sourcing
     pexels_api_key: str = Field(..., alias="PEXELS_API_KEY")

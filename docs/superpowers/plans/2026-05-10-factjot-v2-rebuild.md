@@ -320,7 +320,7 @@ ANTHROPIC_API_KEY=
 
 # Narration
 ELEVENLABS_API_KEY=
-ELEVENLABS_VOICE=3WqHLnw80rOZqJzW9YRB   # carried over from v1 audio brand
+ELEVENLABS_VOICE=        # required; live value lives in .env (carried over from v1)
 
 # Image / footage providers
 PEXELS_API_KEY=
@@ -369,7 +369,7 @@ def test_settings_loads_required_keys():
     settings = Settings()
     assert settings.anthropic_api_key, "ANTHROPIC_API_KEY missing"
     assert settings.elevenlabs_api_key, "ELEVENLABS_API_KEY missing"
-    assert settings.elevenlabs_voice == "3WqHLnw80rOZqJzW9YRB"
+    assert settings.elevenlabs_voice, "ELEVENLABS_VOICE missing"
     assert settings.pexels_api_key, "PEXELS_API_KEY missing"
     assert settings.dry_run is True, "Phase 1 must dry-run by default"
 ```
@@ -395,7 +395,7 @@ class Settings(BaseSettings):
 
     # Narration
     elevenlabs_api_key: str = Field(..., alias="ELEVENLABS_API_KEY")
-    elevenlabs_voice: str = Field(default="3WqHLnw80rOZqJzW9YRB", alias="ELEVENLABS_VOICE")
+    elevenlabs_voice: str = Field(..., alias="ELEVENLABS_VOICE")
 
     # Sourcing
     pexels_api_key: str = Field(..., alias="PEXELS_API_KEY")
@@ -1383,7 +1383,7 @@ Append to `docs/audit-findings.md`:
 ```markdown
 ## 2026-05-10: ElevenLabs SDK audit
 
-**Need:** TTS with voice ID `3WqHLnw80rOZqJzW9YRB`, `eleven_v3` model, word-level alignment, output 48kHz (Meta requires).
+**Need:** TTS with the voice ID from `.env` `ELEVENLABS_VOICE`, `eleven_v3` model, word-level alignment, output 48kHz (Meta requires).
 
 **Library:** `elevenlabs` (official SDK, already in pyproject). Supports `text_to_speech.convert()` (audio bytes) and a separate alignment endpoint. Audio output defaults to 44.1kHz; we'll resample.
 
@@ -1402,7 +1402,7 @@ from src.services.narration.elevenlabs import ElevenLabsNarrator
 
 def test_narrator_initialises():
     n = ElevenLabsNarrator()
-    assert n.voice_id == "3WqHLnw80rOZqJzW9YRB"
+    assert n.voice_id, "voice_id should be loaded from ELEVENLABS_VOICE env"
 
 def test_narrator_writes_to_path(tmp_path):
     n = ElevenLabsNarrator()
@@ -4850,7 +4850,7 @@ jobs:
           DRY_RUN: "true"
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
-          ELEVENLABS_VOICE: 3WqHLnw80rOZqJzW9YRB
+          ELEVENLABS_VOICE: ${{ secrets.ELEVENLABS_VOICE }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}

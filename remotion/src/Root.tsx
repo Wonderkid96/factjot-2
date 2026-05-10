@@ -16,10 +16,12 @@ export const Root: React.FC = () => (
       schema={factReelSchema}
       calculateMetadata={({ props }) => {
         const fps = 30;
-        const HOOK = Math.floor(fps * 1.5);
-        const CTA = Math.floor(fps * 1.8);
-        const lastEnd = props.beats.length ? props.beats[props.beats.length - 1].end_frame : HOOK;
-        return { durationInFrames: HOOK + lastEnd + CTA, fps };
+        // Prefer the spec's pre-computed total_frames (includes title hold,
+        // narration duration, breath room). Fall back to a derived estimate.
+        const total = props.total_frames
+          ?? (props.cta_window?.end_frame ?? 0)
+          ?? 1800;
+        return { durationInFrames: Math.max(total, fps), fps };
       }}
       defaultProps={{
         composition: "FactReel",

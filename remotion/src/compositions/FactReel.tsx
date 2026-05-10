@@ -2,6 +2,8 @@ import React from "react";
 import { z } from "zod";
 import { AbsoluteFill, Sequence, useVideoConfig, Audio, Img, OffthreadVideo } from "remotion";
 
+const windowSchema = z.object({ start_frame: z.number(), end_frame: z.number() });
+
 export const factReelSchema = z.object({
   composition: z.string(),
   title: z.string(),
@@ -10,6 +12,11 @@ export const factReelSchema = z.object({
   narration_audio: z.string().nullable(),
   intro_overlay: z.string().nullable().optional(),
   alignment: z.array(z.any()),
+  // ALL frame values below are ABSOLUTE — relative to start of narration audio.
+  hook_window: windowSchema.optional(),
+  cta_window: windowSchema.optional(),
+  total_frames: z.number().optional(),
+  narration_offset_frames: z.number().optional(),
   beats: z.array(z.object({
     text: z.string(),
     start_frame: z.number(),
@@ -30,36 +37,50 @@ const INTRO_DURATION_S = 1.37;  // matches v1's factjot_intro.mov ProRes
 
 export const FactReel: React.FC<z.infer<typeof factReelSchema>> = ({
   hook, cta, narration_audio, beats, intro_overlay,
+  hook_window, cta_window, narration_offset_frames,
 }) => {
   const { fps } = useVideoConfig();
 
-  const HOOK_FRAMES = Math.floor(fps * 1.5);
-  const lastBeatEnd = beats.length ? beats[beats.length - 1].end_frame : HOOK_FRAMES;
-  const CTA_FRAMES = Math.floor(fps * 1.8);
+  // Hook plays from frame 0 to whenever the narration's hook words end.
+  // Fall back to a 1.5s window if the spec didn't supply one.
+  const hookEnd = hook_window?.end_frame ?? Math.floor(fps * 1.5);
+  // CTA plays at its narration window; fall back to "just after last beat".
+  const ctaStart = cta_window?.start_frame ?? (beats.length ? beats[beats.length - 1].end_frame : hookEnd);
+  const ctaEnd = cta_window?.end_frame ?? (ctaStart + Math.floor(fps * 1.8));
   const INTRO_FRAMES = Math.floor(fps * INTRO_DURATION_S);
+  // Audio is delayed by the title-hold so the hook gets a silent beat first.
+  const narrationDelay = narration_offset_frames ?? 0;
 
   return (
     <AbsoluteFill style={{ backgroundColor: "#0A0A0A" }}>
-      {narration_audio && <Audio src={narration_audio} />}
+      {narration_audio && (
+        <Sequence from={narrationDelay}>
+          <Audio src={narration_audio} />
+        </Sequence>
+      )}
 
-      <Sequence from={0} durationInFrames={HOOK_FRAMES}>
+      {/* Hook — plays for the duration of the hook's narration window. */}
+      <Sequence from={0} durationInFrames={Math.max(hookEnd, 1)}>
         <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
           <h1 style={{
             color: "#F4F1E9",
             fontFamily: "Archivo Black",
-            fontSize: 72,
+            fontSize: 96,
+            lineHeight: 1.05,
             textAlign: "center",
-            padding: "0 40px",
+            padding: "0 60px",
+            textTransform: "uppercase",
+            letterSpacing: "-0.01em",
+            margin: 0,
           }}>{hook}</h1>
         </AbsoluteFill>
       </Sequence>
 
-      {/* Beat assets — one Sequence per beat for the underlying footage. */}
+      {/* Beat assets — one Sequence per beat at its ABSOLUTE narration window. */}
       {beats.map((beat, i) => {
-        const offsetStart = HOOK_FRAMES + beat.start_frame;
         const duration = Math.max(beat.end_frame - beat.start_frame, fps);
         return (
-          <Sequence key={`asset-${i}`} from={offsetStart} durationInFrames={duration}>
+          <Sequence key={`asset-${i}`} from={beat.start_frame} durationInFrames={duration}>
             <AbsoluteFill>
               {beat.asset.path?.endsWith(".mp4") ? (
                 <OffthreadVideo src={beat.asset.path} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -71,24 +92,25 @@ export const FactReel: React.FC<z.infer<typeof factReelSchema>> = ({
         );
       })}
 
-      {/* Caption chunks — separate Sequences so they tick word-group by word-group
-          in time with the narration (IG-reel best practice: 3-5 words per chunk,
-          ~88px Space Grotesk Bold for legibility on a phone). */}
+      {/* Caption chunks — each at its own ABSOLUTE alignment window. No offset math. */}
       {beats.flatMap((beat, i) =>
         ((beat.chunks ?? []).length > 0 ? (beat.chunks ?? []) : [{
           text: beat.text,
           start_frame: beat.start_frame,
           end_frame: beat.end_frame,
         }]).map((chunk, ci) => {
-          const chunkOffset = HOOK_FRAMES + chunk.start_frame;
           const chunkDuration = Math.max(chunk.end_frame - chunk.start_frame, Math.floor(fps / 3));
           return (
-            <Sequence key={`chunk-${i}-${ci}`} from={chunkOffset} durationInFrames={chunkDuration}>
+            <Sequence key={`chunk-${i}-${ci}`} from={chunk.start_frame} durationInFrames={chunkDuration}>
               <AbsoluteFill style={{
                 display: "flex",
                 flexDirection: "column",
-                justifyContent: "flex-end",
-                padding: "0 60px 240px 60px",
+                // Lower-middle, not lower-third — keeps captions out of the
+                // IG UI chrome zone (Like/Comment buttons hug the bottom-right).
+                justifyContent: "center",
+                paddingTop: 720,    // 720/1920 = 37.5% from top — comfortably lower-middle
+                paddingLeft: 60,
+                paddingRight: 60,
                 pointerEvents: "none",
               }}>
                 <p style={{
@@ -113,11 +135,18 @@ export const FactReel: React.FC<z.infer<typeof factReelSchema>> = ({
         })
       )}
 
-      <Sequence from={HOOK_FRAMES + lastBeatEnd} durationInFrames={CTA_FRAMES}>
+      {/* CTA — plays at its ABSOLUTE narration window. */}
+      <Sequence from={ctaStart} durationInFrames={Math.max(ctaEnd - ctaStart, 1)}>
         <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
           <p style={{
-            color: "#F4F1E9", fontFamily: "Archivo Black", fontSize: 56,
-            textAlign: "center", padding: "0 60px",
+            color: "#F4F1E9",
+            fontFamily: "Archivo Black",
+            fontSize: 72,
+            lineHeight: 1.1,
+            textAlign: "center",
+            padding: "0 60px",
+            textTransform: "uppercase",
+            margin: 0,
           }}>{cta}</p>
         </AbsoluteFill>
       </Sequence>

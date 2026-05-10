@@ -15,6 +15,11 @@ Living tracker. Tick off in order as we address each item. New concerns added at
 - [ ] **#7 Brand intro overlay.** v1's `factjot_intro.mov` plays as alpha-channel top overlay for first 1.37s. Pipeline copies it into each run dir.
 - [ ] **#8 Empty slots prevented.** Orchestrator always returns the highest-scored asset when the pool is non-empty, even if vision rejects it.
 - [ ] **#9 Tighter sourcing queries.** 1-3 word progressive queries, no scene descriptions.
+- [ ] **#23 Wikimedia downloads need User-Agent.** `upload.wikimedia.org` 403s on default Python requests UA. Identify the project + contact email. (Fixed in commit d697e5f; verify M24 #15+ pulls images cleanly.)
+- [ ] **#24 ABSOLUTE-frame timeline, no offset math.** Composition was using a hardcoded `HOOK_FRAMES=1.5s` constant while alignment timestamps were authoritative — captions drifted by hook-duration delta. Spec now emits absolute frame coords for hook/beats/cta/chunks. Composition reads them directly. (Fixed; verify.)
+- [ ] **#25 2.5s title hold before narration starts.** v1 used `INTRO_S = 1.5`; Toby wants 2-3s for the hook to land before the voice kicks in. Pipeline offsets the audio Sequence and all narration windows by `TITLE_HOLD_FRAMES`.
+- [ ] **#26 Captions positioned higher.** Current 240px-from-bottom anchor sits in the IG UI zone where Like/Comment chrome lives. Raising to ~400px from bottom (lower-middle).
+- [ ] **#27 Verify correct fonts in render.** Hook + CTA = Archivo Black 900. Captions = Space Grotesk Bold 700. Wordmark = Instrument Serif (with italic "jot" + red dot). NO Instrument Serif on content. Confirm in next render.
 
 ## P1 — visual quality, before we publish
 

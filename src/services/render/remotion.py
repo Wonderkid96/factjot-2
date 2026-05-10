@@ -11,40 +11,114 @@ from src.core.paths import REMOTION_DIR
 from src.pipelines.models import Script, MediaSet
 
 
-def _compute_beat_windows(beats, alignment, hook_text: str = "", fps: int = 30) -> list[dict]:
-    """For each beat, find the narration window and convert to frames.
+WORDS_PER_CAPTION_CHUNK = 4  # IG reel best practice: 3-5 words per displayed chunk
+TITLE_HOLD_SECONDS = 2.5      # Hold the hook on screen before narration starts (Toby's request, v1 used 1.5)
 
-    The narration is `hook + beats + cta` concatenated in pipeline.acquire_media,
-    so alignment[0] is the first word of the HOOK, not beat 0. Skip past the
-    hook's word count before mapping beat windows. Frames returned are relative
-    to the start of the BEAT section (i.e., already hook-offset).
+
+def _compute_timeline(script, alignment, fps: int = 30) -> dict:
+    """Build an ABSOLUTE-frame timeline for the whole reel.
+
+    `alignment` is a single list of `{word, start, end}` covering the
+    concatenated narration `hook + beats + cta` in order. Every frame value
+    in the returned timeline is in audio-clock time — frame 0 = start of
+    narration. The composition just reads these and does no offset math.
+
+    Returns:
+        {
+          "hook":  {start_frame, end_frame},
+          "beats": [{start_frame, end_frame, chunks: [...]}, ...],
+          "cta":   {start_frame, end_frame},
+          "total_frames": int,
+        }
     """
+    beats = script.beats
+    hook_words = len(script.hook.split()) if script.hook else 0
+    cta_words = len(script.cta.split()) if script.cta else 0
+
     if not alignment:
-        # Fallback: even split over 60s, starts at frame 0
+        # Fallback: even split over 60s
         per = 60 / max(len(beats), 1)
-        return [{"start_frame": int(i * per * fps), "end_frame": int((i + 1) * per * fps)} for i in range(len(beats))]
+        beat_dicts = []
+        for i, b in enumerate(beats):
+            sf, ef = int(i * per * fps), int((i + 1) * per * fps)
+            beat_dicts.append({
+                "start_frame": sf,
+                "end_frame": ef,
+                "chunks": [{"text": b.text, "start_frame": sf, "end_frame": ef}],
+            })
+        return {
+            "hook": {"start_frame": 0, "end_frame": int(1.5 * fps)},
+            "beats": beat_dicts,
+            "cta": {"start_frame": int(60 * fps), "end_frame": int(62 * fps)},
+            "total_frames": int(62 * fps),
+            "narration_offset_frames": int(TITLE_HOLD_SECONDS * fps),
+        }
 
-    hook_words = len(hook_text.split()) if hook_text else 0
+    # All timestamps from alignment are in audio-clock seconds (0 = start of
+    # narration audio). We offset everything by TITLE_HOLD so the hook gets a
+    # silent beat before the voice kicks in. The composition plays the audio
+    # starting at TITLE_HOLD frames into the video.
+    title_hold = TITLE_HOLD_SECONDS
+
+    def f(t: float) -> int:
+        return max(0, int((t + title_hold) * fps))
+
+    # Hook window — first `hook_words` words of alignment.
+    hook_start = float(alignment[0]["start"]) if alignment else 0.0
+    hook_end = float(alignment[hook_words - 1]["end"]) if hook_words and hook_words <= len(alignment) else 0.0
+
+    # Beat windows — `hook_words` to (len(alignment) - cta_words). For each beat,
+    # consume its word count off the front. Build chunks of ~4 words.
+    beat_dicts: list[dict] = []
     word_idx = hook_words
-
-    # The frame coordinate the composition uses for beats is "seconds since beat 0
-    # started narrating" — so subtract the hook's end time off everything.
-    hook_end_seconds = float(alignment[hook_words - 1]["end"]) if hook_words and hook_words <= len(alignment) else 0.0
-
-    windows = []
     for b in beats:
         beat_words = b.text.split()
         n = len(beat_words)
-        if word_idx >= len(alignment):
-            # Out of alignment data — flag with zero-length window so FactReel clamps
-            windows.append({"start_frame": int(60 * fps), "end_frame": int(60 * fps)})
+        if n == 0 or word_idx >= len(alignment):
+            # Zero-width window if no narration left
+            beat_dicts.append({"start_frame": f(hook_end), "end_frame": f(hook_end), "chunks": []})
             continue
-        start = float(alignment[word_idx]["start"]) - hook_end_seconds
+
         end_idx = min(word_idx + n - 1, len(alignment) - 1)
-        end = float(alignment[end_idx]["end"]) - hook_end_seconds + 0.2  # 200ms breath
-        windows.append({"start_frame": max(0, int(start * fps)), "end_frame": max(0, int(end * fps))})
+        beat_start = float(alignment[word_idx]["start"])
+        beat_end = float(alignment[end_idx]["end"]) + 0.15  # tiny breath
+
+        chunks: list[dict] = []
+        cw = word_idx
+        local = 0
+        while cw <= end_idx and local < n:
+            ce_word = min(cw + WORDS_PER_CAPTION_CHUNK - 1, end_idx, word_idx + n - 1)
+            text = " ".join(beat_words[local : local + (ce_word - cw + 1)])
+            cs = float(alignment[cw]["start"])
+            cef = float(alignment[ce_word]["end"])
+            chunks.append({"text": text, "start_frame": f(cs), "end_frame": f(cef)})
+            local += ce_word - cw + 1
+            cw = ce_word + 1
+
+        beat_dicts.append({
+            "start_frame": f(beat_start),
+            "end_frame": f(beat_end),
+            "chunks": chunks,
+        })
         word_idx = end_idx + 1
-    return windows
+
+    # CTA window — last `cta_words` words of alignment.
+    if cta_words and word_idx < len(alignment):
+        cta_start = float(alignment[word_idx]["start"])
+        cta_end = float(alignment[-1]["end"]) + 0.2
+    else:
+        cta_start = float(alignment[-1]["end"]) if alignment else 0.0
+        cta_end = cta_start + 1.5
+
+    total_seconds = float(alignment[-1]["end"]) + 0.4 if alignment else 60.0
+
+    return {
+        "hook": {"start_frame": 0, "end_frame": f(hook_end)},
+        "beats": beat_dicts,
+        "cta": {"start_frame": f(cta_start), "end_frame": f(cta_end)},
+        "total_frames": f(total_seconds),
+        "narration_offset_frames": int(title_hold * fps),
+    }
 
 
 @contextlib.contextmanager
@@ -98,7 +172,8 @@ def build_video_spec(
     served by a local helper. Without them paths stay as-is — useful for unit tests.
     """
     asset_by_beat = {a.beat_index: a for a in media.assets}
-    windows = _compute_beat_windows(script.beats, media.narration_alignment, hook_text=script.hook)
+    timeline = _compute_timeline(script, media.narration_alignment)
+    beat_data = timeline["beats"]
     narration = media.narration_audio
 
     def asset_url(p: Path | str | None) -> str | None:
@@ -119,11 +194,19 @@ def build_video_spec(
         "narration_audio": asset_url(narration),
         "intro_overlay": intro_url,
         "alignment": media.narration_alignment,
+        # All frame values below are ABSOLUTE — relative to start of the VIDEO,
+        # which begins with a title-hold before narration. narration_offset_frames
+        # is how long to delay the audio Sequence so the hook can land first.
+        "hook_window": timeline["hook"],
+        "cta_window": timeline["cta"],
+        "total_frames": timeline["total_frames"],
+        "narration_offset_frames": timeline["narration_offset_frames"],
         "beats": [
             {
                 "text": b.text,
-                "start_frame": windows[i]["start_frame"],
-                "end_frame": windows[i]["end_frame"],
+                "start_frame": beat_data[i]["start_frame"],
+                "end_frame": beat_data[i]["end_frame"],
+                "chunks": beat_data[i]["chunks"],
                 "asset": {
                     "path": asset_url(asset_by_beat[i].local_path) if i in asset_by_beat else None,
                     "source": asset_by_beat[i].provider if i in asset_by_beat else None,

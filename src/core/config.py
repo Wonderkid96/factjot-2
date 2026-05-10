@@ -29,9 +29,7 @@ class Settings(BaseSettings):
     youtube_client_secret: str | None = Field(default=None, alias="YOUTUBE_CLIENT_SECRET")
     youtube_refresh_token: str | None = Field(default=None, alias="YOUTUBE_REFRESH_TOKEN")
 
-    # Reddit (discovery layer — frontier #6)
-    reddit_client_id: str | None = Field(default=None, alias="REDDIT_CLIENT_ID")
-    reddit_client_secret: str | None = Field(default=None, alias="REDDIT_CLIENT_SECRET")
+    # Reddit (discovery layer — frontier #6) — uses public .json endpoint, no auth
     reddit_user_agent: str = Field(default="factjot-v2/0.1", alias="REDDIT_USER_AGENT")
 
     # Phase 1 mode

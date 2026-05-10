@@ -3,8 +3,12 @@ from typing import Any
 import requests
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+from src.core.logger import get_logger
+
 
 SPARQL_ENDPOINT = "https://query.wikidata.org/sparql"
+
+log = get_logger("resolution.wikidata")
 
 
 @dataclass
@@ -29,7 +33,11 @@ def _sparql(query: str) -> dict[str, Any]:
 
 
 def resolve_entity(topic: str) -> WikidataEntity | None:
-    """Best-effort label match for an event/person/place. Returns None on no hit."""
+    """Best-effort label match for an event/person/place. Returns None on no hit
+    OR on transient endpoint failure (timeout, 5xx). Wikidata's free SPARQL
+    endpoint frequently rate-limits; entity resolution is enrichment, not
+    blocking — we'd rather lose the wikimedia category boost than abort the run.
+    """
     safe = topic.replace('"', '\\"')
     q = f"""
     SELECT ?item ?itemLabel ?date ?coords ?category WHERE {{
@@ -40,7 +48,11 @@ def resolve_entity(topic: str) -> WikidataEntity | None:
       SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en". }}
     }} LIMIT 1
     """
-    data = _sparql(q)
+    try:
+        data = _sparql(q)
+    except Exception as e:
+        log.warning("resolve_entity_failed", topic=topic, error=str(e)[:200])
+        return None
     bindings = data.get("results", {}).get("bindings", [])
     if not bindings:
         return None

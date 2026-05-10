@@ -55,13 +55,21 @@ If all rejected, return {{"winner_index": null, "rejected": [...]}}.
 """
 
 
+MAX_CANDIDATES_TO_SCORE = 30  # ~270 tokens/candidate * 30 = 8100, safe under 16k cap
+SCORER_MAX_TOKENS = 16384
+
+
 def _call_sonnet_scorer(prompt: str) -> str:
-    return AnthropicClient().text(system="You are an editorial scorer for a faceless reels brand.", user=prompt)
+    return AnthropicClient().text(
+        system="You are an editorial scorer for a faceless reels brand.",
+        user=prompt,
+        max_tokens=SCORER_MAX_TOKENS,
+    )
 
 
 def _call_opus(prompt: str) -> str:
     c = AnthropicClient()
-    return c.text(system="You are an editorial reviewer.", user=prompt, model=c.model_judge)
+    return c.text(system="You are an editorial reviewer.", user=prompt, model=c.model_judge, max_tokens=4096)
 
 
 def curate_topic(recent_topics: list[str], discovered) -> CandidateTopic:
@@ -69,9 +77,13 @@ def curate_topic(recent_topics: list[str], discovered) -> CandidateTopic:
 
     `discovered` is list[DiscoveredCandidate] from the discovery orchestrator.
     """
+    # Cap scoring input to keep Sonnet's structured output under max_tokens.
+    # Prefer high-upvote candidates first; ties broken by source diversity.
+    pool = sorted(discovered, key=lambda c: c.upvotes, reverse=True)[:MAX_CANDIDATES_TO_SCORE]
+    log.info("curating", discovered_total=len(discovered), scoring_pool=len(pool))
     candidates_summary = "\n".join(
         f"- text: {c.text}\n  source: {c.source}\n  url: {c.source_url}\n  upvotes: {c.upvotes}"
-        for c in discovered
+        for c in pool
     )
     scoring_text = _call_sonnet_scorer(SCORER_PROMPT.format(
         recent=", ".join(recent_topics) or "(none)",

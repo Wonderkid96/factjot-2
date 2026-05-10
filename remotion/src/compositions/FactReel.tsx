@@ -59,7 +59,7 @@ export const FactReel: React.FC<z.infer<typeof factReelSchema>> = ({
               <AbsoluteFill style={{ display: "flex", alignItems: "flex-end", padding: 40 }}>
                 <p style={{
                   color: "#F4F1E9", background: "rgba(0,0,0,0.6)", padding: 20,
-                  fontFamily: "Space Grotesk", fontSize: 36, lineHeight: 1.2,
+                  fontFamily: "Space Grotesk", fontWeight: 700, fontSize: 36, lineHeight: 1.2,
                   borderRadius: 12, maxWidth: "100%",
                 }}>{beat.text}</p>
               </AbsoluteFill>
@@ -71,7 +71,7 @@ export const FactReel: React.FC<z.infer<typeof factReelSchema>> = ({
       <Sequence from={HOOK_FRAMES + lastBeatEnd} durationInFrames={CTA_FRAMES}>
         <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
           <p style={{
-            color: "#F4F1E9", fontFamily: "Instrument Serif", fontSize: 56, fontStyle: "italic",
+            color: "#F4F1E9", fontFamily: "Archivo Black", fontSize: 56,
             textAlign: "center", padding: "0 60px",
           }}>{cta}</p>
         </AbsoluteFill>

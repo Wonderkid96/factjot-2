@@ -68,3 +68,13 @@ This file captures observations made while reading the v1 codebase during v2 reb
 **Observation:** plan Task 1.4 declares all three YouTube fields as required (`Field(...)`). With v1's `.env` lacking them, `Settings()` raises ValidationError before any test runs.
 
 **v2 status:** changed (Phase 1 deviation from plan). The three YouTube fields are now `str | None = Field(default=None, ...)`. Phase 1 is dry-run only, YouTube publishing is gated to Phase 5 per spec §16.5. When Phase 5 wires YouTube, Toby adds the three keys to `.env` and the fields can be tightened to required.
+
+---
+
+## 2026-05-10: brand_kit.json copied from v1
+
+**Source:** `/Users/Music/Developer/Insta-bot/brand/brand_kit.json`
+**Destination:** `brand/brand_kit.json`
+**v2 status:** preserved as-is. Independent from v1 from this point. Per spec §6, edits do not propagate either direction.
+
+**Top-level shape (recorded so future tests don't drift):** `name`, `handle`, `version`, `version_note`, `voice`, `colors`, `colors_v2`, `surfaces`, `gradient`, `typography`, `type_scale_v2`, `type_rules_v2`, `layout`, `highlights`, `wordmark`, `templates`, `visual_guidelines`, `content_schema`. Note: plan example used `palette`/`fonts` keys that v1 doesn't have; v2 brand loader and test align with `colors` and `typography` instead.

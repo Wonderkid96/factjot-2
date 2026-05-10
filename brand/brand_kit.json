@@ -1,0 +1,165 @@
+{
+  "name": "factjot",
+  "handle": "@factjot",
+  "version": "2.1",
+  "version_note": "v2.1 (2026-05-10) font hierarchy migration: Archivo Bold 700 added for kinetic reel subtitles; Space Grotesk Bold 700 promoted to canonical label/kicker/chip role; JetBrains Mono Bold dropped from active templates (file retained on disk for backwards compatibility). v2.0 (2026-05) added Archivo Black for caption/video burn-in plus SKY/AVAILABLE/surface tokens.",
+  "voice": {
+    "tone": "curious, precise, dry",
+    "reading_level": "general audience",
+    "headline_style": "mixed case, single sentence, max 14 words, no padding",
+    "cta_style": "short and direct"
+  },
+  "colors": {
+    "paper": "#F4F1E9",
+    "ink": "#0A0A0A",
+    "near_black": "#0B0B0C",
+    "muted": "#9A938A",
+    "off_white": "#EDE8DD",
+    "accent": "#E6352A",
+    "lime": "#C8DB45",
+    "lilac": "#C4A9D0",
+    "shadow": "#000000",
+    "white": "#FFFFFF"
+  },
+  "colors_v2": {
+    "sky":          "#C9D8E2",
+    "available":    "#80EF80",
+    "muted_v2_note": "TJCreate v2 spec lists muted as #6B645A. Existing factjot renderers use muted=#9A938A. Both kept; new renderers may use #6B645A as muted_canonical.",
+    "muted_canonical": "#6B645A"
+  },
+  "surfaces": {
+    "dark_bg":   "#0A0A0A",
+    "surface":   "#161614",
+    "elevated":  "#1E1E1B"
+  },
+  "gradient": {
+    "brand_stops":   ["accent", "paper", "lime", "lilac"],
+    "brand_angle":   90,
+    "brand_css":     "linear-gradient(90deg, #E6352A 0%, #F4F1E9 33%, #C8DB45 66%, #C4A9D0 100%)"
+  },
+  "typography": {
+    "headline_font": "assets/fonts/InstrumentSerif-Regular.ttf",
+    "headline_italic_font": "assets/fonts/InstrumentSerif-Italic.ttf",
+    "label_font": "assets/fonts/JetBrainsMono-Bold.ttf",
+    "label_font_regular": "assets/fonts/JetBrainsMono-Regular.ttf",
+    "label_font_legacy_note": "JetBrains Mono Bold is the legacy label font, replaced by Space Grotesk Bold per the 2026-05-10 font hierarchy migration. Templates have been updated; this entry kept until any external consumer is verified.",
+    "label_font_canonical": "assets/fonts/SpaceGrotesk-Bold.ttf",
+    "label_font_canonical_family": "Space Grotesk",
+    "label_font_canonical_weight": 700,
+    "subtitle_font": "assets/fonts/Archivo-Bold.ttf",
+    "subtitle_font_family": "Archivo",
+    "subtitle_font_weight": 700,
+    "caption_font_v2_note": "v2.1 (2026-05-10) added Archivo Bold 700 as the kinetic reel subtitle font, replacing Space Grotesk Medium 500 for the .subtitle CSS rule. Archivo Black 900 (caption_font) keeps its existing role on hooks, intro/title cards, thumbnails, and story cards.",
+    "caption_font": "assets/fonts/ArchivoBlack-Regular.ttf",
+    "caption_font_family": "Archivo Black",
+    "caption_use": "Reels burn-in hooks, intro/title cards, thumbnails, story cards. Pairs against Instrument Serif. Lowercase preferred.",
+    "caption_letter_spacing_em": -0.01,
+    "headline_size_max": 132,
+    "headline_size_min": 64,
+    "headline_line_height": 0.95,
+    "headline_letter_spacing_em": -0.02,
+    "label_size": 22,
+    "label_letter_spacing_em": 0.14
+  },
+  "type_scale_v2": {
+    "hero":  "clamp(2.2rem, 10vw, 11rem)",
+    "h1":    "clamp(2.5rem, 8vw, 7rem)",
+    "bio":   "clamp(1.45rem, 3vw, 2.8rem)",
+    "h2":    "clamp(1.2rem, 2.5vw, 2rem)",
+    "body":  "0.95rem to 1.25rem",
+    "label": "10 to 11px, 0.2em tracking",
+    "caption_archivo_black": "14 to 22pt burn-in subtitle"
+  },
+  "type_rules_v2": {
+    "heading_pattern":            "Word Italic.",
+    "italic_accent_rule":         "whole word only, never mid-word",
+    "accent_period":              "trailing dot in #E6352A on key words",
+    "section_counter_format":     "[ 01 / Label ] (square brackets required)",
+    "tracking_display_em":        -0.035,
+    "tracking_label_em":          0.20,
+    "tracking_archivo_black_em": [-0.015, -0.005],
+    "line_height_display":       [0.9, 1.0],
+    "line_height_body":          [1.5, 1.6],
+    "line_height_archivo_black": [1.0, 1.1]
+  },
+  "layout": {
+    "canvas_width": 1080,
+    "canvas_height": 1350,
+    "side_margin": 72,
+    "top_margin": 56,
+    "bottom_margin": 80,
+    "headline_block_height_pct": 0.5,
+    "darken_gradient_start_pct": 0.18,
+    "darken_gradient_end_alpha": 0.92,
+    "image_grain_opacity": 0.07,
+    "headline_drop_shadow_dx_px": 2,
+    "headline_drop_shadow_dy_px": 2,
+    "headline_drop_shadow_alpha": 0.52,
+    "label_drop_shadow_dx_px": 1,
+    "label_drop_shadow_dy_px": 1,
+    "label_drop_shadow_alpha": 0.55
+  },
+  "highlights": {
+    "italic_token": ["[i]", "[/i]"],
+    "italic_accent_token": ["[h]", "[/h]"],
+    "max_highlights_per_slide": 2,
+    "italic_color": "white",
+    "italic_accent_color": "accent",
+    "rules": [
+      "Always wrap the killer detail (a number, money figure, year, or single payoff word) in [h]...[/h] for italic + accent orange.",
+      "Wrap the central proper-noun or key entity in [i]...[/i] for italic + white.",
+      "Never mark function words. Never colour more than one phrase orange.",
+      "If no clear killer detail exists, leave the slide with only an [i]...[/i] phrase or no highlight at all."
+    ]
+  },
+  "wordmark": {
+    "text": "factjot",
+    "italic_part": "jot",
+    "accent_dot": true,
+    "color": "off_white"
+  },
+  "templates": {
+    "cover": {
+      "show_wordmark_top": true,
+      "show_index": true,
+      "show_category_label": true,
+      "show_accent_dot": true
+    },
+    "body": {
+      "show_wordmark_top": true,
+      "show_index": true,
+      "show_category_label": true,
+      "show_accent_dot": true
+    },
+    "closing": {
+      "show_wordmark_top": true,
+      "show_index": true,
+      "show_category_label": true,
+      "show_cta": true,
+      "show_accent_dot": true
+    }
+  },
+  "visual_guidelines": {
+    "style": "factjot_dark_editorial",
+    "image_position": "full_bleed",
+    "darken_treatment": "vertical_gradient_to_near_black",
+    "panel_color": null,
+    "headline_treatment": "instrument_serif_mixed_case_italic_emphasis_accent_keyword",
+    "pill_color": "near_black",
+    "allowed_templates": ["cover", "body", "closing"],
+    "locked": true,
+    "lock_note": "Visual rules are strict and can only be changed by owner approval."
+  },
+  "content_schema": {
+    "required_fields": [
+      "post_id",
+      "series",
+      "category",
+      "slides",
+      "caption",
+      "hashtags",
+      "sources",
+      "confidence"
+    ]
+  }
+}

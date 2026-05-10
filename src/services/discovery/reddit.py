@@ -29,7 +29,8 @@ DEFAULT_SUBREDDITS = [
     "interestingasfuck",
     "BeAmazed",
     "UnresolvedMysteries",
-    "MorbidReality",
+    # "MorbidReality" — quarantined subreddit, returns 403 to unauthenticated requests.
+    # Cannot be accessed via the public .json endpoint without OAuth.
     "HistoryPorn",
     "ArtefactPorn",
     "MapPorn",

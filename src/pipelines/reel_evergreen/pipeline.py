@@ -150,14 +150,40 @@ class ReelEvergreenPipeline(Pipeline):
             if vb.period_constraints and not era_compatible(sourced.source_url, vb.period_constraints):
                 continue
             # Pick a sane extension from the source URL or fall back by media type.
-            # `media_type[:3]` produced "ima" for images — Remotion couldn't decode it.
             url_suffix = Path(sourced.source_url.split("?")[0]).suffix.lower()
             if url_suffix in (".jpg", ".jpeg", ".png", ".webp", ".gif", ".mp4", ".mov", ".webm"):
                 ext = url_suffix.lstrip(".")
             else:
                 ext = "mp4" if sourced.media_type == "video" else "jpg"
             local = rc.assets_dir / f"beat-{i}.{ext}"
-            local.write_bytes(requests.get(sourced.source_url, timeout=60).content)
+
+            # Download with proper error handling. Wikimedia returns 429 with a
+            # short HTML body when rate-limited; we used to write that body as
+            # if it were a JPEG and Remotion choked on the 126-byte ASCII file.
+            try:
+                resp = requests.get(sourced.source_url, timeout=60)
+                resp.raise_for_status()
+                content = resp.content
+                if len(content) < 4096:
+                    log.warning("asset_download_too_small",
+                                url=sourced.source_url, bytes=len(content))
+                    continue
+                # Magic-byte sniff for images so we don't write HTML/PDF as .jpg
+                if sourced.media_type == "image":
+                    head = content[:8]
+                    if not (head.startswith(b"\xff\xd8")           # JPEG
+                            or head.startswith(b"\x89PNG")          # PNG
+                            or head[:4] == b"RIFF"                  # WEBP container
+                            or head[:6] in (b"GIF87a", b"GIF89a")):  # GIF
+                        log.warning("asset_not_an_image",
+                                    url=sourced.source_url,
+                                    head=head.hex())
+                        continue
+                local.write_bytes(content)
+            except Exception as e:
+                log.warning("asset_download_failed",
+                            url=sourced.source_url, error=str(e)[:200])
+                continue
             assets.append(MediaAsset(
                 beat_index=i, local_path=local, source_url=sourced.source_url,
                 provider=sourced.provider, license=sourced.license,

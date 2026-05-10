@@ -2,6 +2,9 @@ from dataclasses import dataclass
 import mwclient
 
 
+IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp")  # PDFs, SVGs, audio etc. excluded — they look like image hits but break the renderer
+
+
 @dataclass
 class WikimediaCandidate:
     title: str
@@ -34,14 +37,25 @@ def _to_candidate(img) -> WikimediaCandidate | None:
     )
 
 
+def _is_image_title(title: str) -> bool:
+    return title.lower().endswith(IMAGE_EXTS)
+
+
 def search_commons(query: str, limit: int = 25) -> list[WikimediaCandidate]:
-    """R1/R2: full-text search Commons. Lower precision, broader recall."""
+    """R1/R2: full-text search Commons. Lower precision, broader recall.
+
+    Filtered to actual image extensions — Commons search returns PDFs, SVGs,
+    audio, and even other multimedia in the File namespace. Picking a PDF as
+    a beat 'image' broke the renderer.
+    """
     site = _site()
     out: list[WikimediaCandidate] = []
     for hit in site.search(query, namespace=6):  # 6 = File namespace
         if len(out) >= limit:
             break
         title = hit["title"].removeprefix("File:")
+        if not _is_image_title(title):
+            continue
         page = site.images[title]
         c = _to_candidate(page)
         if c:
@@ -58,7 +72,7 @@ def traverse_category(category: str, limit: int = 50) -> list[WikimediaCandidate
         if len(out) >= limit:
             break
         title = getattr(member, "page_title", "")
-        if not title.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+        if not _is_image_title(title):
             continue
         c = _to_candidate(member)
         if c:

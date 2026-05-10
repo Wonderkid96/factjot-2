@@ -56,11 +56,23 @@ export const FactReel: React.FC<z.infer<typeof factReelSchema>> = ({
               ) : beat.asset.path ? (
                 <Img src={beat.asset.path} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : null}
-              <AbsoluteFill style={{ display: "flex", alignItems: "flex-end", padding: 40 }}>
+              <AbsoluteFill style={{
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "flex-end",
+                padding: "0 60px 200px 60px",
+              }}>
                 <p style={{
-                  color: "#F4F1E9", background: "rgba(0,0,0,0.6)", padding: 20,
-                  fontFamily: "Space Grotesk", fontWeight: 700, fontSize: 36, lineHeight: 1.2,
-                  borderRadius: 12, maxWidth: "100%",
+                  color: "#F4F1E9",
+                  background: "rgba(0,0,0,0.65)",
+                  padding: "20px 28px",
+                  fontFamily: "Space Grotesk",
+                  fontWeight: 700,
+                  fontSize: 44,
+                  lineHeight: 1.25,
+                  borderRadius: 14,
+                  margin: 0,
+                  textAlign: "center",
                 }}>{beat.text}</p>
               </AbsoluteFill>
             </AbsoluteFill>

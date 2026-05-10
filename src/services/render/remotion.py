@@ -11,26 +11,38 @@ from src.core.paths import REMOTION_DIR
 from src.pipelines.models import Script, MediaSet
 
 
-def _compute_beat_windows(beats, alignment, fps: int = 30) -> list[dict]:
-    """For each beat, find the narration window (first word start -> last word end) and convert to frames."""
+def _compute_beat_windows(beats, alignment, hook_text: str = "", fps: int = 30) -> list[dict]:
+    """For each beat, find the narration window and convert to frames.
+
+    The narration is `hook + beats + cta` concatenated in pipeline.acquire_media,
+    so alignment[0] is the first word of the HOOK, not beat 0. Skip past the
+    hook's word count before mapping beat windows. Frames returned are relative
+    to the start of the BEAT section (i.e., already hook-offset).
+    """
     if not alignment:
-        # Fallback: even split over 60s
+        # Fallback: even split over 60s, starts at frame 0
         per = 60 / max(len(beats), 1)
         return [{"start_frame": int(i * per * fps), "end_frame": int((i + 1) * per * fps)} for i in range(len(beats))]
 
-    # Walk word timestamps and split per beat (alignment is concatenated word timing for hook+beats+cta in order)
-    word_idx = 0
+    hook_words = len(hook_text.split()) if hook_text else 0
+    word_idx = hook_words
+
+    # The frame coordinate the composition uses for beats is "seconds since beat 0
+    # started narrating" — so subtract the hook's end time off everything.
+    hook_end_seconds = float(alignment[hook_words - 1]["end"]) if hook_words and hook_words <= len(alignment) else 0.0
+
     windows = []
     for b in beats:
         beat_words = b.text.split()
         n = len(beat_words)
         if word_idx >= len(alignment):
+            # Out of alignment data — flag with zero-length window so FactReel clamps
             windows.append({"start_frame": int(60 * fps), "end_frame": int(60 * fps)})
             continue
-        start = float(alignment[word_idx]["start"])
+        start = float(alignment[word_idx]["start"]) - hook_end_seconds
         end_idx = min(word_idx + n - 1, len(alignment) - 1)
-        end = float(alignment[end_idx]["end"]) + 0.2  # 200ms breath
-        windows.append({"start_frame": int(start * fps), "end_frame": int(end * fps)})
+        end = float(alignment[end_idx]["end"]) - hook_end_seconds + 0.2  # 200ms breath
+        windows.append({"start_frame": max(0, int(start * fps)), "end_frame": max(0, int(end * fps))})
         word_idx = end_idx + 1
     return windows
 
@@ -86,7 +98,7 @@ def build_video_spec(
     served by a local helper. Without them paths stay as-is — useful for unit tests.
     """
     asset_by_beat = {a.beat_index: a for a in media.assets}
-    windows = _compute_beat_windows(script.beats, media.narration_alignment)
+    windows = _compute_beat_windows(script.beats, media.narration_alignment, hook_text=script.hook)
     narration = media.narration_audio
 
     def asset_url(p: Path | str | None) -> str | None:

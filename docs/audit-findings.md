@@ -136,3 +136,15 @@ This file captures observations made while reading the v1 codebase during v2 reb
 **Decision:** `mwclient`. ~5MB, well-maintained, supports `Site.categories()` and `Site.images()`. Cleanly handles auth-free reads.
 
 **Verdict:** add `mwclient>=0.10.0` to deps. Use it for both R1 (search) and R2 (category) paths.
+
+---
+
+## 2026-05-10: Pexels SDK audit
+
+**Need:** Search Pexels for video clips (preferred) and photos by query.
+
+**Candidates:** `pexels-api`, `pypexels` (both unmaintained), raw `requests`.
+
+**Decision:** raw `requests`. Pexels API is 2 endpoints, ~30 lines total. No SDK needed.
+
+**Verdict:** first-party.

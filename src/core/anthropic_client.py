@@ -1,3 +1,4 @@
+import json
 import re
 from typing import Any
 
@@ -11,12 +12,17 @@ _FENCE_RE = re.compile(r"```(?:json)?\s*\n?(.*?)\n?```", re.DOTALL)
 
 
 def extract_json(text: str) -> str:
-    """Pull JSON out of an LLM response that may include markdown fences or prose.
+    """Pull the first JSON document out of an LLM response.
 
-    LLMs frequently wrap structured output in ```json ... ``` or add a
-    "Here is the JSON:" preamble. Strict json.loads() on the raw response
-    fails. This helper strips fences, then locates the outer-most JSON
-    array/object and returns just that span.
+    Handles common LLM wrapping styles:
+    - plain JSON
+    - markdown ```json ... ``` fence
+    - prose preamble then JSON
+    - JSON then trailing prose / extra content (raw_decode stops cleanly)
+
+    Uses json.JSONDecoder.raw_decode which parses one balanced JSON value and
+    reports where parsing stopped — robust to trailing garbage that would
+    otherwise trip a naive find-first-/find-last brace approach.
     """
     if not text:
         return text
@@ -28,18 +34,18 @@ def extract_json(text: str) -> str:
 
     text = text.strip()
 
-    # Already starts with JSON? Done.
-    if text.startswith("{") or text.startswith("["):
-        return text
+    # Walk from each candidate start char; first parse-success wins
+    decoder = json.JSONDecoder()
+    for i, c in enumerate(text):
+        if c not in "{[":
+            continue
+        try:
+            _obj, end = decoder.raw_decode(text[i:])
+            return text[i : i + end]
+        except json.JSONDecodeError:
+            continue
 
-    # Find an outer-most array or object
-    for start_char, end_char in (("[", "]"), ("{", "}")):
-        start = text.find(start_char)
-        end = text.rfind(end_char)
-        if start != -1 and end > start:
-            return text[start : end + 1]
-
-    # No JSON-looking content; return as-is so json.loads raises a clear error
+    # No parseable JSON found; return as-is so caller's json.loads raises a clear error
     return text
 
 

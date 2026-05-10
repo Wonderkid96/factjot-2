@@ -21,7 +21,28 @@ from src.core.logger import get_logger
 from src.services.discovery.models import DiscoveredCandidate
 
 
-DEFAULT_SUBREDDITS = ["todayilearned", "AskHistorians", "Damnthatsinteresting"]
+DEFAULT_SUBREDDITS = [
+    # Tier 1 (Toby's preferred — top of the pile)
+    "UnpopularFacts",
+    "todayilearned",
+    "Damnthatsinteresting",
+    "interestingasfuck",
+    "BeAmazed",
+    "UnresolvedMysteries",
+    "MorbidReality",
+    "HistoryPorn",
+    "ArtefactPorn",
+    "MapPorn",
+    # Tier 2 (extended pool)
+    "AskHistorians",
+    "AskScience",
+    "science",
+    "DataIsBeautiful",
+    "morbidcuriosity",
+    "TheDepthsBelow",
+    "space",
+    "Futurology",
+]
 REDDIT_BASE = "https://www.reddit.com"
 SLEEP_BETWEEN_SUBREDDITS = 1.5  # be polite
 

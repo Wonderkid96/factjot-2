@@ -39,7 +39,17 @@ class ElevenLabsNarrator:
         )
 
     def _fetch_alignment(self, text: str, audio_bytes: bytes) -> list[dict]:
-        """Call the alignment endpoint to get word timestamps."""
+        """Call the with-timestamps endpoint and return word-level alignment.
+
+        ElevenLabs returns three parallel arrays under `alignment`:
+          characters: list[str] (one char each)
+          character_start_times_seconds: list[float]
+          character_end_times_seconds: list[float]
+
+        We group consecutive non-whitespace characters into words and return
+        list[dict] with {"word": str, "start": float, "end": float} — the shape
+        FactReel.tsx expects for narration-locked beat timing.
+        """
         resp = requests.post(
             "https://api.elevenlabs.io/v1/text-to-speech/" + self.voice_id + "/with-timestamps",
             headers={"xi-api-key": self.settings.elevenlabs_api_key},
@@ -48,8 +58,31 @@ class ElevenLabsNarrator:
         )
         resp.raise_for_status()
         data = resp.json()
-        # Extract simple word-level alignment from char-level response
-        return data.get("alignment", {}).get("characters", [])
+        align = data.get("alignment") or data.get("normalized_alignment") or {}
+        chars = align.get("characters", [])
+        starts = align.get("character_start_times_seconds", [])
+        ends = align.get("character_end_times_seconds", [])
+        if not (len(chars) == len(starts) == len(ends)) or not chars:
+            return []
+
+        words: list[dict] = []
+        cur_chars: list[str] = []
+        cur_start: float | None = None
+        prev_end: float = 0.0
+        for ch, s, e in zip(chars, starts, ends):
+            if ch.isspace():
+                if cur_chars:
+                    words.append({"word": "".join(cur_chars), "start": cur_start or 0.0, "end": prev_end})
+                    cur_chars = []
+                    cur_start = None
+            else:
+                if cur_start is None:
+                    cur_start = float(s)
+                cur_chars.append(ch)
+                prev_end = float(e)
+        if cur_chars:
+            words.append({"word": "".join(cur_chars), "start": cur_start or 0.0, "end": prev_end})
+        return words
 
     def synthesize(self, text: str, out_path: Path) -> NarrationResult:
         out_path.parent.mkdir(parents=True, exist_ok=True)

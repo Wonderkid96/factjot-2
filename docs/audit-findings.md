@@ -112,3 +112,27 @@ This file captures observations made while reading the v1 codebase during v2 reb
 **Resample tool:** ffmpeg (already a system requirement for Remotion). `subprocess.run(["ffmpeg", "-i", in, "-ar", "48000", out])`.
 
 **Verdict:** use SDK for TTS, raw HTTP `requests` to alignment endpoint (the SDK alignment helper is partial), ffmpeg subprocess for resample.
+
+---
+
+## 2026-05-10: Wikidata library audit
+
+**Need:** Resolve a topic string ("Johnstown Flood") to canonical Wikidata entity ID (Q261221), with linked Wikimedia category, dates, location.
+
+**Candidates:** `qwikidata` (official Wikidata helpers, well-maintained), `wikidata` (older, simpler), raw SPARQL via `requests` (zero-dep).
+
+**Decision:** raw SPARQL via `requests`. Wikidata's SPARQL endpoint is stable, well-documented, and we only need 1-2 queries. `qwikidata` adds 50MB for very little gain over a 30-line wrapper.
+
+**Verdict:** first-party, ~50 lines, uses stdlib `requests` + `tenacity` retry.
+
+---
+
+## 2026-05-10: Wikimedia client audit
+
+**Need:** Wikimedia Commons API access -- both keyword search AND category traversal (frontier #4).
+
+**Candidates:** `mwclient` (mature, supports both), `pywikibot` (heavy, more aimed at editing), raw API via `requests`.
+
+**Decision:** `mwclient`. ~5MB, well-maintained, supports `Site.categories()` and `Site.images()`. Cleanly handles auth-free reads.
+
+**Verdict:** add `mwclient>=0.10.0` to deps. Use it for both R1 (search) and R2 (category) paths.

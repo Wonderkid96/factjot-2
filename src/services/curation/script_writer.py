@@ -15,22 +15,49 @@ SYSTEM_PROMPT = """You are a script writer for Fact Jot, a faceless Instagram re
 Style guide (always honour):
 {style_guide}
 
-You write a structured script as a JSON object with keys:
-- title: <=70 chars
-- hook: first 1.5s, <=12 words, must follow the hook formula
-- topic_entity: 1-3 word canonical noun phrase naming the central subject of the WHOLE reel, OR null if the topic is abstract. This anchors visuals across every beat.
-- beats: 4-7 items, each `{{ "text": str, "visual_brief": {{ ... }} }}`
-- cta: one sentence, follows CTA convention
-- citations: list of `{{ "claim": str, "source_url": str, "source_quote": str }}`
+# HARD CONSTRAINTS — non-negotiable
 
-**topic_entity rules:**
-- It is the proper noun the entire reel revolves around — used to pull archive footage of that subject across every beat, including beats whose specific subject is something else.
+**Length: target 30-40 seconds when narrated.**
+ElevenLabs reads at ~150 words per minute, so the TOTAL script across hook + all beats + CTA must be **80-100 words**. Going over 110 makes the reel drag. Going under 70 leaves it feeling thin.
+
+**Banned punctuation in shipping copy:** em dashes (—), en dashes (–), and ellipses (...). Use commas, full stops, or rewrite the sentence. This rule is from Toby's brand voice. If you find yourself reaching for an em dash, the sentence is structurally weak — rewrite it.
+
+# JSON SCHEMA
+
+Return a JSON object with these keys:
+- `title`: <=60 chars, declarative, image-able. NOT a question.
+- `hook`: 6-10 words. The first 1.5 seconds. Must STOP the thumb. See hook formula below.
+- `topic_entity`: 1-3 word canonical proper noun for the WHOLE reel, OR null if abstract.
+- `beats`: EXACTLY 4 items. Each item: `{{ "text": str, "visual_brief": {{ ... }} }}`. Beat text: 12-18 words.
+- `cta`: 8-12 words. The closing line that lands the consequence or pattern. NOT a "follow for more".
+- `citations`: list of `{{ "claim": str, "source_url": str, "source_quote": str }}`.
+
+# HOOK FORMULA
+
+The hook is everything. If they don't stop scrolling in 1.5s, nothing else matters.
+
+**Form:** a counterintuitive declarative claim, present tense, active voice. Image-able subject in the first 5 words. No question marks. No "Did you know". No setup.
+
+**GOOD hooks (study these):**
+- "Every horse runs on its middle finger."
+- "The first photograph took 8 hours to expose."
+- "Your blood is hotter than the desert."
+- "JFK's Pulitzer wasn't even his to win."
+- "Roman ruins live under a Belgrade glass floor."
+
+**BAD hooks (rewrite if you produce these):**
+- "Horses walk on a single fingertip, not a foot." (passive, descriptive)
+- "Did you know horses walk on their fingers?" (question, banned phrase)
+- "It's surprising what horses actually walk on." (no concrete subject, vague)
+
+# topic_entity RULES
+
+- The proper noun the entire reel revolves around. Used to pull archive footage of that subject across every beat.
 - Examples:
-  - "John F. Kennedy was the only US president to win a Pulitzer..." → topic_entity: "John F. Kennedy"
-  - "The Johnstown Flood killed 2,209 people in 14 minutes..." → topic_entity: "Johnstown Flood"
-  - "Blue whales rarely get cancer..." → topic_entity: "Blue whale"
-  - "Quantum entanglement breaks classical intuition..." → topic_entity: null (abstract)
-  - "A man sat on a pole for 439 days to protest gas prices..." → topic_entity: "H. David Werder" (the protagonist) OR null if the man isn't the anchor — pick null when the entity is too obscure to have Wikimedia footage.
+  - "John F. Kennedy was the only US president to win a Pulitzer..." → "John F. Kennedy"
+  - "The Johnstown Flood killed 2,209 people in 14 minutes..." → "Johnstown Flood"
+  - "Blue whales rarely get cancer..." → "Blue whale"
+  - "Quantum entanglement breaks classical intuition..." → null (abstract)
 - Single proper noun preferred. "Apollo 11", not "Apollo 11 mission to the moon".
 
 The `visual_brief` for each beat is critical — visuals are sourced from search engines (Wikimedia Commons, Pexels, Pixabay) using the brief, so vague briefs produce vague visuals. Format:
@@ -75,6 +102,29 @@ def _call_writer(system: str, user: str) -> str:
     return AnthropicClient().text(system=system, user=user)
 
 
+def _strip_banned_punctuation(text: str) -> str:
+    """Sonnet sometimes leaks em dashes / en dashes / ellipses despite the prompt.
+    Final defence: replace them post-generation. Em/en dash → comma. Ellipsis → full stop.
+    """
+    return (
+        text.replace("—", ",")
+            .replace("–", ",")
+            .replace("…", ".")
+            .replace("...", ".")
+    )
+
+
+def _scrub_script(data: dict) -> dict:
+    """Walk every voice-facing string and strip banned punctuation."""
+    for key in ("hook", "cta", "title"):
+        if key in data and isinstance(data[key], str):
+            data[key] = _strip_banned_punctuation(data[key])
+    for beat in data.get("beats", []):
+        if isinstance(beat.get("text"), str):
+            beat["text"] = _strip_banned_punctuation(beat["text"])
+    return data
+
+
 def generate_script(topic: str, angle: str) -> Script:
     sys = SYSTEM_PROMPT.format(style_guide=_load_style_guide())
     user = f"Write a Fact Jot reel script about: {topic}\nAngle: {angle}\n\nReturn JSON only."
@@ -84,4 +134,5 @@ def generate_script(topic: str, angle: str) -> Script:
     except json.JSONDecodeError as e:
         log.error("script_json_parse_failed", error=str(e), preview=raw[:500])
         raise
+    data = _scrub_script(data)
     return Script.model_validate(data)

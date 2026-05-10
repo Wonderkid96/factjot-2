@@ -14,6 +14,11 @@ export const factReelSchema = z.object({
     text: z.string(),
     start_frame: z.number(),
     end_frame: z.number(),
+    chunks: z.array(z.object({
+      text: z.string(),
+      start_frame: z.number(),
+      end_frame: z.number(),
+    })).default([]),
     asset: z.object({
       path: z.string().nullable(),
       source: z.string().nullable(),
@@ -49,40 +54,64 @@ export const FactReel: React.FC<z.infer<typeof factReelSchema>> = ({
         </AbsoluteFill>
       </Sequence>
 
+      {/* Beat assets — one Sequence per beat for the underlying footage. */}
       {beats.map((beat, i) => {
         const offsetStart = HOOK_FRAMES + beat.start_frame;
         const duration = Math.max(beat.end_frame - beat.start_frame, fps);
         return (
-          <Sequence key={i} from={offsetStart} durationInFrames={duration}>
+          <Sequence key={`asset-${i}`} from={offsetStart} durationInFrames={duration}>
             <AbsoluteFill>
               {beat.asset.path?.endsWith(".mp4") ? (
                 <OffthreadVideo src={beat.asset.path} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : beat.asset.path ? (
                 <Img src={beat.asset.path} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : null}
-              <AbsoluteFill style={{
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "flex-end",
-                padding: "0 60px 200px 60px",
-              }}>
-                <p style={{
-                  color: "#F4F1E9",
-                  background: "rgba(0,0,0,0.65)",
-                  padding: "20px 28px",
-                  fontFamily: "Space Grotesk",
-                  fontWeight: 700,
-                  fontSize: 44,
-                  lineHeight: 1.25,
-                  borderRadius: 14,
-                  margin: 0,
-                  textAlign: "center",
-                }}>{beat.text}</p>
-              </AbsoluteFill>
             </AbsoluteFill>
           </Sequence>
         );
       })}
+
+      {/* Caption chunks — separate Sequences so they tick word-group by word-group
+          in time with the narration (IG-reel best practice: 3-5 words per chunk,
+          ~88px Space Grotesk Bold for legibility on a phone). */}
+      {beats.flatMap((beat, i) =>
+        ((beat.chunks ?? []).length > 0 ? (beat.chunks ?? []) : [{
+          text: beat.text,
+          start_frame: beat.start_frame,
+          end_frame: beat.end_frame,
+        }]).map((chunk, ci) => {
+          const chunkOffset = HOOK_FRAMES + chunk.start_frame;
+          const chunkDuration = Math.max(chunk.end_frame - chunk.start_frame, Math.floor(fps / 3));
+          return (
+            <Sequence key={`chunk-${i}-${ci}`} from={chunkOffset} durationInFrames={chunkDuration}>
+              <AbsoluteFill style={{
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "flex-end",
+                padding: "0 60px 240px 60px",
+                pointerEvents: "none",
+              }}>
+                <p style={{
+                  color: "#F4F1E9",
+                  background: "rgba(0,0,0,0.72)",
+                  padding: "24px 36px",
+                  fontFamily: "Space Grotesk",
+                  fontWeight: 700,
+                  fontSize: 88,
+                  lineHeight: 1.15,
+                  letterSpacing: "-0.01em",
+                  borderRadius: 18,
+                  margin: 0,
+                  textAlign: "center",
+                  textTransform: "uppercase",
+                  alignSelf: "center",
+                  maxWidth: "100%",
+                }}>{chunk.text}</p>
+              </AbsoluteFill>
+            </Sequence>
+          );
+        })
+      )}
 
       <Sequence from={HOOK_FRAMES + lastBeatEnd} durationInFrames={CTA_FRAMES}>
         <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>

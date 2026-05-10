@@ -1,0 +1,10 @@
+name: reel_evergreen
+output_format: reel
+target_platforms:
+  - instagram
+  - youtube_shorts
+brand_format: reel_overlay
+remotion_composition: FactReel
+cadence:
+  - "0 8 * * *"
+  - "30 19 * * *"

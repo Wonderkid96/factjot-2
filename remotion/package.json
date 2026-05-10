@@ -1,0 +1,24 @@
+{
+  "name": "factjot-remotion",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "preview": "remotion studio",
+    "render": "remotion render",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "remotion": "^4.0.0",
+    "@remotion/cli": "^4.0.0",
+    "@remotion/bundler": "^4.0.0",
+    "@remotion/renderer": "^4.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/react": "^18.0.0",
+    "vitest": "^1.0.0"
+  }
+}

@@ -160,8 +160,14 @@ class ReelEvergreenPipeline(Pipeline):
             # Download with proper error handling. Wikimedia returns 429 with a
             # short HTML body when rate-limited; we used to write that body as
             # if it were a JPEG and Remotion choked on the 126-byte ASCII file.
+            # User-Agent is REQUIRED — upload.wikimedia.org returns 403 to
+            # default Python requests UA (their published bot policy).
             try:
-                resp = requests.get(sourced.source_url, timeout=60)
+                resp = requests.get(
+                    sourced.source_url,
+                    timeout=60,
+                    headers={"User-Agent": "FactJotV2/0.1 (https://factjot.com; tobyjohnsonemail@gmail.com)"},
+                )
                 resp.raise_for_status()
                 content = resp.content
                 if len(content) < 4096:

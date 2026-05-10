@@ -21,6 +21,13 @@ def _reddit() -> praw.Reddit:
 
 
 def fetch_reddit_candidates(subreddits: list[str] | None = None, limit: int = 25, time_filter: str = "week") -> list[DiscoveredCandidate]:
+    s = Settings()
+    if not s.reddit_client_id or not s.reddit_client_secret:
+        # v1's .env has these as commented placeholders. Phase 1 dry-runs without Reddit
+        # if credentials aren't set. Other discovery sources continue to work.
+        import logging
+        logging.getLogger(__name__).warning("REDDIT_CLIENT_ID or REDDIT_CLIENT_SECRET not set; skipping Reddit discovery.")
+        return []
     out: list[DiscoveredCandidate] = []
     r = _reddit()
     for name in subreddits or DEFAULT_SUBREDDITS:

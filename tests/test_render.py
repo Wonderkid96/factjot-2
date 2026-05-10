@@ -19,6 +19,8 @@ def test_build_video_spec_produces_json_serialisable_dict():
     assert spec["composition"] == "FactReel"
     assert len(spec["beats"]) == 1
     assert spec["beats"][0]["asset"]["path"].endswith("a.jpg")
+    assert "start_frame" in spec["beats"][0]
+    assert "end_frame" in spec["beats"][0]
 
 
 def test_render_invokes_subprocess(tmp_path):

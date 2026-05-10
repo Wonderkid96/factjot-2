@@ -166,3 +166,15 @@ This file captures observations made while reading the v1 codebase during v2 reb
 **Wikidata SPARQL:** already wired in §10.3, reuse `_sparql()`.
 
 **Verdict:** add `praw`, `beautifulsoup4`, `feedparser`. ~3 deps total.
+
+---
+
+## 2026-05-10: v1 fact_checker.py audit
+
+**Path observed:** `/Users/Music/Developer/Insta-bot/src/verification/fact_checker.py`
+
+**Behaviour observed:** v1 verifies each claim via >=2 sources at confidence >=0.65, runs a correction-signal scan, validates source-text supports the claim. Stateless.
+
+**v2 status:** carry forward the same gates. v2's verifier additionally cross-checks against the Wikidata entity from §10.3 when available (a verified Wikidata ID is itself a high-confidence anchor).
+
+NOTE: v1 is more layered than the summary above. It has two distinct verification paths: (1) `FactVerificationLayer.verify()` which operates on `FactCandidate` objects with `SourceEvidence` quality scores, applying confidence floor 0.65 plus a concrete-anchor heuristic (requires numbers or named entity terms); and (2) two standalone module-level gates -- `verify_consistency` (Haiku call checking title/claim contradictions and red-flag framing words like "fictional", "absurdity") and `verify_anchors` (heuristic Wikipedia cross-check). Both standalone gates fail-open on infrastructure failure, fail-closed on real quality issues. v2's `fact_checker.py` implements the simpler LLM-judge path matching the core confidence gate. The red-flag framing scan and concrete-anchor heuristic are not yet ported -- flag for Task 14 follow-up if needed.

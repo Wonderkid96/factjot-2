@@ -90,3 +90,25 @@ This file captures observations made while reading the v1 codebase during v2 reb
 **Decision:** `structlog`. Composable, supports both JSON and console renderer, mature, used widely. Cost: 1 dep.
 
 **Verdict:** add `structlog>=24.0.0` to pyproject.toml.
+
+---
+
+## 2026-05-10: Anthropic SDK audit
+
+**Need:** Claude API calls with prompt caching, structured output (JSON), vision (Haiku), tool use later.
+
+**Library:** `anthropic` (official SDK, already in pyproject). Native support for caching via `cache_control` blocks. Native vision. Battle-tested.
+
+**Verdict:** use as-is. v2's `core/anthropic_client.py` is a thin wrapper providing: model defaults, retry policy (tenacity), prompt caching helpers, structured-output helper using `response_model` pattern.
+
+---
+
+## 2026-05-10: ElevenLabs SDK audit
+
+**Need:** TTS with the voice ID from `.env` `ELEVENLABS_VOICE`, `eleven_v3` model, word-level alignment, output 48kHz (Meta requires).
+
+**Library:** `elevenlabs` (official SDK, already in pyproject). Supports `text_to_speech.convert()` (audio bytes) and a separate alignment endpoint. Audio output defaults to 44.1kHz; we'll resample.
+
+**Resample tool:** ffmpeg (already a system requirement for Remotion). `subprocess.run(["ffmpeg", "-i", in, "-ar", "48000", out])`.
+
+**Verdict:** use SDK for TTS, raw HTTP `requests` to alignment endpoint (the SDK alignment helper is partial), ffmpeg subprocess for resample.

@@ -1,0 +1,53 @@
+name: manual test (dry-run)
+
+on:
+  workflow_dispatch:
+    inputs:
+      pipeline:
+        description: pipeline name
+        required: true
+        default: reel_evergreen
+
+concurrency:
+  group: factjot-v2
+  cancel-in-progress: false
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+
+      - run: pip install -e ".[dev]"
+
+      - run: cd remotion && npm ci
+
+      - name: Dry-run pipeline
+        env:
+          DRY_RUN: "true"
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE: ${{ secrets.ELEVENLABS_VOICE }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
+          FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+          IMGBB_API_KEY: ${{ secrets.IMGBB_API_KEY }}
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+        run: python -m src.runner.run_pipeline --pipeline ${{ inputs.pipeline }} --dry-run
+
+      - name: Upload artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: factjot-dry-run-${{ github.run_id }}
+          path: output/

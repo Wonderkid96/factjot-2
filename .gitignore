@@ -29,6 +29,11 @@ runs/
 *.mp3
 .DS_Store
 
+# Test fixtures DO travel with the repo so overnight iteration is reproducible
+!tests/fixtures/**/*.mp3
+!tests/fixtures/**/*.wav
+!tests/fixtures/**/*.mp4
+
 # Editor
 .vscode/
 .idea/

@@ -2,6 +2,7 @@ import React from "react";
 import { Composition } from "remotion";
 import { FactReel, factReelSchema } from "./compositions/FactReel";
 import { ReelThumbnail, reelThumbnailSchema } from "./compositions/ReelThumbnail";
+import { ReelStory, reelStorySchema } from "./compositions/ReelStory";
 
 export const Root: React.FC = () => (
   <>
@@ -44,6 +45,22 @@ export const Root: React.FC = () => (
         frame_path: null,
         kicker: null,
         fact_number: null,
+        title_size: 132,
+      }}
+    />
+    <Composition
+      id="ReelStory"
+      component={ReelStory}
+      durationInFrames={1}
+      fps={30}
+      width={1080}
+      height={1920}
+      schema={reelStorySchema}
+      defaultProps={{
+        title: "Untitled fact",
+        topic: "GENERAL",
+        frame_path: null,
+        kicker: null,
         title_size: 132,
       }}
     />

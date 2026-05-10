@@ -32,3 +32,21 @@ def test_render_invokes_subprocess(tmp_path):
         out.write_bytes(b"")  # Remotion would create this
         render_via_remotion(script, media, out, composition_id="FactReel")
     assert run.called
+
+
+def test_render_still_invokes_subprocess(tmp_path):
+    from unittest.mock import patch, MagicMock
+    from src.services.render.remotion import render_still_via_remotion
+    out = tmp_path / "thumb.png"
+    with patch("src.services.render.remotion.subprocess.run") as run:
+        run.return_value = MagicMock(returncode=0)
+        out.write_bytes(b"")
+        render_still_via_remotion(
+            composition_id="ReelThumbnail",
+            props={"title": "test", "topic": "TEST", "frame_path": None, "kicker": None, "fact_number": None, "title_size": 132},
+            out_path=out,
+        )
+    assert run.called
+    args = run.call_args[0][0]
+    assert "still" in args
+    assert "ReelThumbnail" in args

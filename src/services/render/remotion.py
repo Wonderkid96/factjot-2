@@ -70,3 +70,25 @@ def render_via_remotion(script: Script, media: MediaSet, out_path: Path, composi
     if result.returncode != 0:
         raise RuntimeError(f"Remotion render failed: {result.stderr}")
     return out_path
+
+
+def render_still_via_remotion(composition_id: str, props: dict, out_path: Path) -> Path:
+    """Render a single PNG frame from a Remotion composition.
+
+    Used for thumbnails and story tiles. Same Remotion compositions, single-frame export.
+    """
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    spec_path = out_path.with_suffix(".props.json")
+    spec_path.write_text(json.dumps(props))
+
+    cmd = [
+        "npx", "remotion", "still",
+        composition_id,
+        str(out_path),
+        "--props", str(spec_path),
+        "--config", "remotion.config.ts",
+    ]
+    result = subprocess.run(cmd, cwd=REMOTION_DIR, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"Remotion still failed: {result.stderr}")
+    return out_path

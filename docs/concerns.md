@@ -31,6 +31,20 @@ Living tracker. Tick off in order as we address each item. New concerns added at
 - [ ] **#14 Noise / film grain overlay.** v1 had a temporal film grain (luma noise) baked in via FFmpeg. Adds production feel. Implement as Remotion overlay or post-render FFmpeg pass.
 - [ ] **#15 More fact sources.** Damn Interesting (RSS), Smithsonian Magazine (RSS), Public Domain Review (RSS), Wikipedia "Selected anniversaries" (daily). All free, all RSS, ~30 lines each.
 
+## P0 — Remotion is being underused (Toby flagged 2026-05-10)
+
+Honest read: we've been treating Remotion as a video compositor and not using ANY of its motion-design power. Every Remotion benefit (interpolate, spring, Easing, Transitions, composition library) is currently absent. The output looks like iMovie because it IS like iMovie. This is the single biggest brand-quality lever remaining.
+
+- [ ] **#16 Hook entry animation.** Hook text should animate IN — e.g. mask reveal, scale spring, letter stagger. Currently appears static.
+- [ ] **#17 Caption chunk pop-in.** Each chunk should fade/spring in with a snap (15-20 frames), not just appear. TikTok-standard.
+- [ ] **#18 Asset transitions between beats.** Currently hard-cuts. Cross-dissolves, whip pans, dip-to-color, parallax slide — pick a small set, vary per beat for rhythm.
+- [ ] **#19 Image parallax (Ken Burns).** Static images should slow-pan / slow-zoom. Trivial in Remotion via `useCurrentFrame` + interpolate.
+- [ ] **#20 CTA animation.** CTA needs presence — slide-up + fade-in, or word-by-word reveal. Currently static.
+- [ ] **#21 Wordmark presence.** factjot wordmark should appear somewhere in every frame after the intro (corner watermark? lower-right pill?). Currently absent from FactReel composition.
+- [ ] **#22 Component library + templates.** Spec §17.1 Phase 1.2: build `HookCard`, `BeatVideoOver`, `BeatStatOverlay`, `BeatComparison`, `OutroCTA`, transition library. Script writer's composition_plan picks per beat. Different combinations = "feels handmade".
+
+Once these land, the strong test result will look like a real brand reel, not a slideshow.
+
 ## P2 — overnight iteration enablers (already shipped, sanity-check)
 
 - [x] **USE_LOCAL_AGENT=true** routes Anthropic calls to `claude -p` (free via subscription). Committed.
@@ -42,6 +56,7 @@ Living tracker. Tick off in order as we address each item. New concerns added at
 - [ ] **Composition library + director step.** `HookStatBlast`, `BeatMapPin`, `BeatTimeline` etc. Sonnet picks per beat.
 - [ ] **Word-by-word kinetic captions.** Currently chunk-level (3-5 words); upgrade to word-by-word sync.
 - [ ] **Specialist visuals.** Mapbox maps, animated SVG diagrams, counters synced to alignment.
+- [ ] **Update elevenlabs voice ID to be https://elevenlabs.io/app/voice-library?voiceId=Bj9UqZbhQsanLzgalpEG - Bj9UqZbhQsanLzgalpEG
 
 ---
 

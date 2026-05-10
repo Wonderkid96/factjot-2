@@ -1,4 +1,5 @@
 import json
+import os
 from src.core.anthropic_client import AnthropicClient, extract_json
 from src.core.logger import get_logger
 from src.core.paths import REPO_ROOT
@@ -6,6 +7,14 @@ from src.pipelines.models import Script
 
 
 log = get_logger("curation.script_writer")
+
+
+class FrozenModeViolation(RuntimeError):
+    """Raised when the script writer would be called while FACTJOT_FROZEN=1.
+
+    Frozen mode means render-only against a fixture. Hitting Anthropic for a
+    new script breaks that contract and burns credits.
+    """
 
 STYLE_GUIDE_PATH = REPO_ROOT / "style" / "style-guide.md"
 
@@ -126,6 +135,12 @@ def _scrub_script(data: dict) -> dict:
 
 
 def generate_script(topic: str, angle: str) -> Script:
+    if os.getenv("FACTJOT_FROZEN") == "1":
+        raise FrozenModeViolation(
+            "generate_script() called while FACTJOT_FROZEN=1. Use the fixture's "
+            "spec.json instead of regenerating, or drop --frozen if you really "
+            "want to hit Anthropic."
+        )
     sys = SYSTEM_PROMPT.format(style_guide=_load_style_guide())
     user = f"Write a Fact Jot reel script about: {topic}\nAngle: {angle}\n\nReturn JSON only."
     raw = _call_writer(sys, user)

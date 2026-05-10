@@ -1,3 +1,4 @@
+import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,6 +13,14 @@ from src.core.config import Settings
 # narration ~10% faster than the eleven_v3 default. atempo accepts 0.5-2.0
 # directly; 1.1 is well inside that range, no chaining needed.
 NARRATION_SPEED = 1.1
+
+
+class FrozenModeViolation(RuntimeError):
+    """Raised when ElevenLabs would be called while FACTJOT_FROZEN=1.
+
+    The frozen runner contract is: no paid APIs. If this fires, the pipeline
+    is leaking through frozen mode somewhere and would otherwise burn credits.
+    """
 
 
 @dataclass
@@ -108,6 +117,12 @@ class ElevenLabsNarrator:
         return words
 
     def synthesize(self, text: str, out_path: Path) -> NarrationResult:
+        if os.getenv("FACTJOT_FROZEN") == "1":
+            raise FrozenModeViolation(
+                "ElevenLabsNarrator.synthesize() called while FACTJOT_FROZEN=1. "
+                "Frozen mode is the contract that says 'no paid APIs tonight'. "
+                "Either drop --frozen, or fix the call site to reuse the fixture audio."
+            )
         out_path.parent.mkdir(parents=True, exist_ok=True)
         raw_path = out_path.with_suffix(".44k.mp3")
         raw_path.write_bytes(self._call_tts_api(text))

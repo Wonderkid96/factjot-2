@@ -18,3 +18,16 @@ def test_orchestrator_aggregates_and_dedupes():
     # The deduped survivor should track both sources for cross-validation
     apollo = next(c for c in result if "apollo" in c.text.lower())
     assert "reddit" in apollo.raw_metadata.get("seen_in", []) or "wikipedia_dyk" in apollo.raw_metadata.get("seen_in", [])
+
+
+def test_orchestrator_tolerates_source_failures():
+    """A source raising an exception must not kill the others. Best-effort discovery."""
+    good = DiscoveredCandidate(text="Wikipedia gave us this", source="wikipedia_dyk", source_url="x")
+    with patch("src.services.discovery.orchestrator.fetch_reddit_candidates", side_effect=RuntimeError("boom")):
+        with patch("src.services.discovery.orchestrator.fetch_dyk_candidates", return_value=[good]):
+            with patch("src.services.discovery.orchestrator.fetch_atlas_obscura_candidates", side_effect=TimeoutError("slow")):
+                with patch("src.services.discovery.orchestrator.fetch_hn_candidates", return_value=[]):
+                    with patch("src.services.discovery.orchestrator.fetch_pattern_candidates", side_effect=Exception("sparql died")):
+                        result = discover_candidates(per_source_limit=10)
+    assert len(result) == 1
+    assert result[0].source == "wikipedia_dyk"

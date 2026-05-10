@@ -25,6 +25,53 @@ OUTRO_TEXT = "Follow fact jot for more facts."
 TAIL_BUFFER_SECONDS = 1.2
 
 
+def _chunks_from_alignment(words: list[dict], fps: int, f) -> list[dict]:
+    """Group an alignment slice into caption chunks.
+
+    Each chunk holds 1-WORDS_PER_CAPTION_CHUNK words of spoken text. Chunks
+    are CLOSED early when a word's text ends with strong punctuation
+    (`.`, `,`, `;`, `:`, `?`, `!`) so captions break on natural phrase
+    boundaries instead of mid-clause.
+
+    Every chunk returns:
+      - text:        joined spoken text (from alignment, not beat.text)
+      - start_frame: f(first word.start)
+      - end_frame:   f(last  word.end)
+      - words:       list of {text, start_frame, end_frame} for per-word
+                     highlighting inside the chunk
+    """
+    BREAK_CHARS = (".", ",", ";", ":", "?", "!")
+    chunks: list[dict] = []
+    cur: list[dict] = []
+
+    def flush() -> None:
+        if not cur:
+            return
+        text = " ".join(w["word"] for w in cur)
+        chunks.append({
+            "text": text,
+            "start_frame": f(float(cur[0]["start"])),
+            "end_frame": f(float(cur[-1]["end"])),
+            "words": [
+                {
+                    "text": w["word"],
+                    "start_frame": f(float(w["start"])),
+                    "end_frame": f(float(w["end"])),
+                }
+                for w in cur
+            ],
+        })
+        cur.clear()
+
+    for w in words:
+        cur.append(w)
+        ends_phrase = w["word"].rstrip().endswith(BREAK_CHARS)
+        if ends_phrase or len(cur) >= WORDS_PER_CAPTION_CHUNK:
+            flush()
+    flush()
+    return chunks
+
+
 def _compute_timeline(script, alignment, fps: int = 30) -> dict:
     """Build an ABSOLUTE-frame timeline for the whole reel.
 
@@ -79,33 +126,27 @@ def _compute_timeline(script, alignment, fps: int = 30) -> dict:
     hook_start = float(alignment[0]["start"]) if alignment else 0.0
     hook_end = float(alignment[hook_words - 1]["end"]) if hook_words and hook_words <= len(alignment) else 0.0
 
-    # Beat windows — `hook_words` to (len(alignment) - cta_words). For each beat,
-    # consume its word count off the front. Build chunks of ~4 words.
+    # Beat windows — consume each beat's word count from the alignment.
+    # Build chunks DIRECTLY from alignment so chunk text and chunk timing
+    # come from the same source — eliminates any drift when beat.text.split()
+    # disagrees with ElevenLabs's tokenisation (contractions, punctuation,
+    # hyphens). Each chunk also carries a `words[]` array with per-word
+    # timing so the renderer can highlight the spoken word inside the chunk.
     beat_dicts: list[dict] = []
     word_idx = hook_words
     for b in beats:
         beat_words = b.text.split()
         n = len(beat_words)
         if n == 0 or word_idx >= len(alignment):
-            # Zero-width window if no narration left
             beat_dicts.append({"start_frame": f(hook_end), "end_frame": f(hook_end), "chunks": []})
             continue
 
         end_idx = min(word_idx + n - 1, len(alignment) - 1)
-        beat_start = float(alignment[word_idx]["start"])
-        beat_end = float(alignment[end_idx]["end"]) + 0.15  # tiny breath
+        beat_align = alignment[word_idx : end_idx + 1]
+        beat_start = float(beat_align[0]["start"])
+        beat_end = float(beat_align[-1]["end"]) + 0.15  # tiny breath
 
-        chunks: list[dict] = []
-        cw = word_idx
-        local = 0
-        while cw <= end_idx and local < n:
-            ce_word = min(cw + WORDS_PER_CAPTION_CHUNK - 1, end_idx, word_idx + n - 1)
-            text = " ".join(beat_words[local : local + (ce_word - cw + 1)])
-            cs = float(alignment[cw]["start"])
-            cef = float(alignment[ce_word]["end"])
-            chunks.append({"text": text, "start_frame": f(cs), "end_frame": f(cef)})
-            local += ce_word - cw + 1
-            cw = ce_word + 1
+        chunks: list[dict] = _chunks_from_alignment(beat_align, fps, f)
 
         beat_dicts.append({
             "start_frame": f(beat_start),

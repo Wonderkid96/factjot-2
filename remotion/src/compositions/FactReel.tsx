@@ -34,6 +34,14 @@ export const factReelSchema = z.object({
       text: z.string(),
       start_frame: z.number(),
       end_frame: z.number(),
+      // Per-word timing so the chunk can highlight the spoken word.
+      // Built from the same ElevenLabs alignment that drove chunk timing,
+      // so word boundaries are exact.
+      words: z.array(z.object({
+        text: z.string(),
+        start_frame: z.number(),
+        end_frame: z.number(),
+      })).default([]),
     })).default([]),
     asset: z.object({
       path: z.string().nullable(),
@@ -53,27 +61,70 @@ const FRAME_H = 1920;
 
 // Caption chunk: lowercase, clean white, no stroke / no pill,
 // soft drop shadow. v1 style verbatim.
-function ChunkCaption({ text }: { text: string }) {
+//
+// When `words[]` is present (built from ElevenLabs alignment), the chunk
+// highlights the currently-spoken word with the brand accent. When it's
+// not (legacy or fallback chunks), the chunk renders as one static block.
+interface ChunkWord {
+  text: string;
+  start_frame: number;
+  end_frame: number;
+}
+
+function ChunkCaption({
+  text, words, chunkStart,
+}: {
+  text: string;
+  words?: ChunkWord[];
+  chunkStart: number;
+}) {
   const frame = useCurrentFrame();
+  // Frame numbers in words[] are ABSOLUTE (composition frames). The chunk's
+  // Sequence starts at `chunkStart`, so the local frame inside the chunk is
+  // `frame`, and we need to compare against `word_start - chunkStart`.
   const opacity = interpolate(frame, [0, 4], [0, 1], { extrapolateRight: "clamp" });
   const translateY = interpolate(frame, [0, 6], [12, 0], {
     extrapolateRight: "clamp",
     easing: Easing.out(Easing.cubic),
   });
+  const baseStyle: React.CSSProperties = {
+    color: "#FFFFFF",
+    fontFamily: "Space Grotesk",
+    fontWeight: 700,
+    fontSize: 72,
+    lineHeight: 1.15,
+    letterSpacing: "-0.005em",
+    margin: 0,
+    textAlign: "center",
+    textShadow: "0 4px 18px rgba(0,0,0,0.85), 0 0 8px rgba(0,0,0,0.6)",
+    opacity,
+    transform: `translateY(${translateY}px)`,
+  };
+
+  // Without word-level timing, render the whole chunk as one block.
+  if (!words || words.length === 0) {
+    return <p style={baseStyle}>{text}</p>;
+  }
+
+  // With word-level timing, render each word inline and apply the accent
+  // colour to the word currently being spoken. Pre-spoken words stay white;
+  // already-spoken words stay white too — only the live word is accented.
   return (
-    <p style={{
-      color: "#FFFFFF",
-      fontFamily: "Space Grotesk",
-      fontWeight: 700,
-      fontSize: 72,
-      lineHeight: 1.15,
-      letterSpacing: "-0.005em",
-      margin: 0,
-      textAlign: "center",
-      textShadow: "0 4px 18px rgba(0,0,0,0.85), 0 0 8px rgba(0,0,0,0.6)",
-      opacity,
-      transform: `translateY(${translateY}px)`,
-    }}>{text}</p>
+    <p style={baseStyle}>
+      {words.map((w, i) => {
+        const localStart = w.start_frame - chunkStart;
+        const localEnd = w.end_frame - chunkStart;
+        const isActive = frame >= localStart && frame < localEnd;
+        return (
+          <span key={`w-${i}`} style={{
+            color: isActive ? palette.accent : "#FFFFFF",
+            transition: "color 80ms linear",
+          }}>
+            {w.text}{i < words.length - 1 ? " " : ""}
+          </span>
+        );
+      })}
+    </p>
   );
 }
 
@@ -130,13 +181,23 @@ function BeatVideo({ path }: { path: string }) {
   );
 }
 
-// Hook title — spring scale + opacity on entry. Lives on a dark background
-// during the 2.5s title hold before narration starts.
+// Hook title — spring scale + opacity on entry, coordinated with the intro
+// overlay's reveal animation. The intro plays for INTRO_DURATION_S frames;
+// during that window the title is fading in BENEATH the intro alpha, so as
+// the overlay clears the title is already in position.
 function Hook({ text }: { text: string }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const entry = spring({ frame, fps, config: { damping: 14, stiffness: 110 } });
-  const scale = interpolate(entry, [0, 1], [0.85, 1]);
+  // Delay the spring entry slightly past the intro start so the title
+  // "appears" with the intro animation rather than before it.
+  const introFrames = Math.floor(fps * INTRO_DURATION_S);
+  const revealStart = Math.floor(introFrames * 0.4); // 40% through the intro
+  const entry = spring({
+    frame: Math.max(0, frame - revealStart),
+    fps,
+    config: { damping: 14, stiffness: 110 },
+  });
+  const scale = interpolate(entry, [0, 1], [0.88, 1]);
   const opacity = interpolate(entry, [0, 1], [0, 1]);
   return (
     <AbsoluteFill style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -157,6 +218,37 @@ function Hook({ text }: { text: string }) {
         <YearAccent text={text.replace(/\.$/, "")} />
         <span style={{ color: palette.accent }}>.</span>
       </h1>
+    </AbsoluteFill>
+  );
+}
+
+// HeroAsset — first-beat image at low opacity during the title hold, so
+// the intro animation reveals a real background instead of pure ink.
+// Fades from 0 → 0.45 over the first 0.8s, then holds until beat 0 starts
+// (where the full-opacity BeatStill takes over).
+function HeroAsset({ path, holdFrames }: { path: string; holdFrames: number }) {
+  const frame = useCurrentFrame();
+  const fadeIn = interpolate(frame, [0, 24], [0, 0.45], {
+    extrapolateRight: "clamp",
+    easing: Easing.out(Easing.cubic),
+  });
+  // Gentle zoom from 1.04 → 1.0 so the asset feels alive without distracting
+  const scale = interpolate(frame, [0, holdFrames], [1.04, 1.0], {
+    extrapolateRight: "clamp",
+    easing: Easing.linear,
+  });
+  return (
+    <AbsoluteFill style={{ opacity: fadeIn }}>
+      <Img src={path} style={{
+        width: "100%", height: "100%", objectFit: "cover",
+        transform: `scale(${scale})`,
+        transformOrigin: "center center",
+        filter: "blur(2px) brightness(0.78)",
+      }} />
+      <AbsoluteFill style={{
+        background: "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.55) 100%)",
+        pointerEvents: "none",
+      }} />
     </AbsoluteFill>
   );
 }
@@ -303,6 +395,15 @@ export const FactReel: React.FC<z.infer<typeof factReelSchema>> = ({
       {/* Subtle weave wraps every visual layer so the whole frame wiggles slightly. */}
       <Weave>
 
+      {/* Hero asset — first beat's image at low opacity from frame 0, so the
+          intro animation reveals a real background, not pure ink. Continues
+          until beat 0's full-opacity BeatStill takes over. */}
+      {beats[0]?.asset?.path && (
+        <Sequence from={0} durationInFrames={Math.max(beats[0].start_frame, 1)}>
+          <HeroAsset path={beats[0].asset.path} holdFrames={beats[0].start_frame} />
+        </Sequence>
+      )}
+
       {/* Hook — silent title hold, then narration kicks in during the same window */}
       <Sequence from={0} durationInFrames={Math.max(hookEnd, 1)}>
         <Hook text={hook} />
@@ -324,12 +425,14 @@ export const FactReel: React.FC<z.infer<typeof factReelSchema>> = ({
       })}
 
       {/* Caption chunks — v1 style: lowercase, 72px, no pill, no stroke,
-          positioned ~52% from top. */}
+          positioned ~52% from top. Per-word highlight pulls the spoken word
+          to the brand accent so subtitles read as karaoke-style. */}
       {beats.flatMap((beat, i) =>
         ((beat.chunks ?? []).length > 0 ? (beat.chunks ?? []) : [{
           text: beat.text,
           start_frame: beat.start_frame,
           end_frame: beat.end_frame,
+          words: [],
         }]).map((chunk, ci) => {
           const chunkDuration = Math.max(chunk.end_frame - chunk.start_frame, Math.floor(fps / 3));
           return (
@@ -343,7 +446,11 @@ export const FactReel: React.FC<z.infer<typeof factReelSchema>> = ({
                 paddingRight: 80,
                 pointerEvents: "none",
               }}>
-                <ChunkCaption text={chunk.text} />
+                <ChunkCaption
+                  text={chunk.text}
+                  words={chunk.words}
+                  chunkStart={chunk.start_frame}
+                />
               </AbsoluteFill>
             </Sequence>
           );
@@ -373,6 +480,8 @@ export const FactReel: React.FC<z.infer<typeof factReelSchema>> = ({
       <GrainOverlay />
 
       {/* Brand intro overlay — alpha-channel video on top for the first 1.37s.
+          ProRes 4444 yuva444p12le source carries a real alpha channel; Remotion
+          needs `transparent` to honour it instead of compositing against black.
           Sits OUTSIDE the weave so it's perfectly aligned with the frame edge. */}
       {intro_overlay && (
         <Sequence from={0} durationInFrames={INTRO_FRAMES}>
@@ -381,6 +490,7 @@ export const FactReel: React.FC<z.infer<typeof factReelSchema>> = ({
               src={intro_overlay}
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
               muted
+              transparent
             />
           </AbsoluteFill>
         </Sequence>

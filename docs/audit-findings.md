@@ -78,3 +78,15 @@ This file captures observations made while reading the v1 codebase during v2 reb
 **v2 status:** preserved as-is. Independent from v1 from this point. Per spec §6, edits do not propagate either direction.
 
 **Top-level shape (recorded so future tests don't drift):** `name`, `handle`, `version`, `version_note`, `voice`, `colors`, `colors_v2`, `surfaces`, `gradient`, `typography`, `type_scale_v2`, `type_rules_v2`, `layout`, `highlights`, `wordmark`, `templates`, `visual_guidelines`, `content_schema`. Note: plan example used `palette`/`fonts` keys that v1 doesn't have; v2 brand loader and test align with `colors` and `typography` instead.
+
+---
+
+## 2026-05-10: logging library audit
+
+**Need:** structured logging with JSON output for CI, human-readable for dev.
+
+**Candidates:** `loguru` (popular, simple), `structlog` (composable), stdlib `logging` (zero deps).
+
+**Decision:** `structlog`. Composable, supports both JSON and console renderer, mature, used widely. Cost: 1 dep.
+
+**Verdict:** add `structlog>=24.0.0` to pyproject.toml.

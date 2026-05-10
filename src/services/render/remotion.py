@@ -132,14 +132,18 @@ def _compute_timeline(script, alignment, fps: int = 30) -> dict:
         outro_start = cta_end
         outro_end = outro_start + 1.5
 
-    total_seconds = (float(alignment[-1]["end"]) if alignment else 60.0) + TAIL_BUFFER_SECONDS
+    # total_frames must NOT use f() — f() bakes in SUBTITLE_SYNC_OFFSET_SECONDS
+    # which is a negative caption-display nudge, not audio-clock truth.
+    # Compose directly from title_hold + audio length + tail.
+    audio_end = float(alignment[-1]["end"]) if alignment else 60.0
+    total_frames = int((title_hold + audio_end + TAIL_BUFFER_SECONDS) * fps)
 
     return {
         "hook": {"start_frame": 0, "end_frame": f(hook_end)},
         "beats": beat_dicts,
         "cta": {"start_frame": f(cta_start), "end_frame": f(cta_end)},
         "outro": {"start_frame": f(outro_start), "end_frame": f(outro_end)},
-        "total_frames": f(total_seconds),
+        "total_frames": total_frames,
         "narration_offset_frames": int(title_hold * fps),
     }
 

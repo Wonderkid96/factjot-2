@@ -8,6 +8,12 @@ from elevenlabs.client import ElevenLabs
 from src.core.config import Settings
 
 
+# Speed multiplier applied via ffmpeg atempo (preserves pitch). Toby wanted
+# narration ~10% faster than the eleven_v3 default. atempo accepts 0.5-2.0
+# directly; 1.1 is well inside that range, no chaining needed.
+NARRATION_SPEED = 1.1
+
+
 @dataclass
 class NarrationResult:
     audio_path: Path
@@ -20,6 +26,7 @@ class ElevenLabsNarrator:
         self.voice_id = self.settings.elevenlabs_voice
         self.client = ElevenLabs(api_key=self.settings.elevenlabs_api_key)
         self.model_id = "eleven_v3"
+        self.speed = NARRATION_SPEED
 
     def _call_tts_api(self, text: str) -> bytes:
         chunks = self.client.text_to_speech.convert(
@@ -31,12 +38,17 @@ class ElevenLabsNarrator:
         return b"".join(chunks)
 
     def _resample_to_48khz(self, src: Path, dst: Path) -> None:
-        """Meta rejects 44.1kHz audio. Resample before muxing."""
-        subprocess.run(
-            ["ffmpeg", "-y", "-i", str(src), "-ar", "48000", "-c:a", "libmp3lame", str(dst)],
-            check=True,
-            capture_output=True,
-        )
+        """Resample to 48kHz AND apply atempo for narration speed.
+
+        Meta rejects 44.1kHz audio. atempo preserves pitch when speeding up,
+        which is what we want; -filter:a runs both stages in one ffmpeg pass.
+        """
+        filters = [f"atempo={self.speed}"] if self.speed != 1.0 else []
+        cmd = ["ffmpeg", "-y", "-i", str(src), "-ar", "48000"]
+        if filters:
+            cmd += ["-filter:a", ",".join(filters)]
+        cmd += ["-c:a", "libmp3lame", str(dst)]
+        subprocess.run(cmd, check=True, capture_output=True)
 
     def _fetch_alignment(self, text: str, audio_bytes: bytes) -> list[dict]:
         """Call the with-timestamps endpoint and return word-level alignment.

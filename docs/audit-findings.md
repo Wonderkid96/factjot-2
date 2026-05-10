@@ -148,3 +148,21 @@ This file captures observations made while reading the v1 codebase during v2 reb
 **Decision:** raw `requests`. Pexels API is 2 endpoints, ~30 lines total. No SDK needed.
 
 **Verdict:** first-party.
+
+---
+
+## 2026-05-10: Reddit / discovery library audit
+
+**Need:** Read-only Reddit access (subreddit listings, top posts, post metadata + URLs).
+
+**Library:** `praw` (Python Reddit API Wrapper). Mature, official-style, handles OAuth, well-documented. Adds ~5MB.
+
+**Wikipedia DYK:** scrape from https://en.wikipedia.org/wiki/Wikipedia:Recent_additions via stdlib `requests` + `beautifulsoup4`.
+
+**Atlas Obscura:** RSS feed via `feedparser`.
+
+**Hacker News:** free public API (no auth) via `requests`.
+
+**Wikidata SPARQL:** already wired in §10.3, reuse `_sparql()`.
+
+**Verdict:** add `praw`, `beautifulsoup4`, `feedparser`. ~3 deps total.

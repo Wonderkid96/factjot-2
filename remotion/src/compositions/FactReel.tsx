@@ -1,6 +1,40 @@
 import React from "react";
 import { z } from "zod";
-import { AbsoluteFill, Sequence, useVideoConfig, Audio, Img, OffthreadVideo } from "remotion";
+import { AbsoluteFill, Sequence, useVideoConfig, useCurrentFrame, interpolate, Easing, Audio, Img, OffthreadVideo } from "remotion";
+
+
+// TikTok-style caption with pop-in animation. Lives inside a Sequence so
+// useCurrentFrame() returns the frame WITHIN this chunk's window.
+const ChunkCaption: React.FC<{ text: string }> = ({ text }) => {
+  const frame = useCurrentFrame();
+  const scale = interpolate(frame, [0, 4], [1.18, 1.0], {
+    extrapolateRight: "clamp",
+    easing: Easing.out(Easing.cubic),
+  });
+  const opacity = interpolate(frame, [0, 3], [0, 1], {
+    extrapolateRight: "clamp",
+  });
+  return (
+    <p style={{
+      color: "#F4F1E9",
+      fontFamily: "Space Grotesk",
+      fontWeight: 700,
+      fontSize: 92,
+      lineHeight: 1.1,
+      letterSpacing: "-0.01em",
+      margin: 0,
+      textAlign: "center",
+      textTransform: "uppercase",
+      // TikTok-style heavy stroke for legibility on any background
+      // (replaces the dark pill — punchier, no rectangle box).
+      WebkitTextStroke: "5px #0A0A0A",
+      paintOrder: "stroke fill" as const,
+      textShadow: "0 6px 18px rgba(0,0,0,0.55)",
+      transform: `scale(${scale})`,
+      opacity,
+    }}>{text}</p>
+  );
+};
 
 const windowSchema = z.object({ start_frame: z.number(), end_frame: z.number() });
 
@@ -105,30 +139,15 @@ export const FactReel: React.FC<z.infer<typeof factReelSchema>> = ({
               <AbsoluteFill style={{
                 display: "flex",
                 flexDirection: "column",
-                // Lower-middle, not lower-third — keeps captions out of the
-                // IG UI chrome zone (Like/Comment buttons hug the bottom-right).
-                justifyContent: "center",
-                paddingTop: 720,    // 720/1920 = 37.5% from top — comfortably lower-middle
+                // ~35% from top of frame, matching the upper-middle viral-content
+                // standard. Keeps captions out of the IG UI chrome at the bottom.
+                justifyContent: "flex-start",
+                paddingTop: 672,    // 672/1920 ≈ 35% from top
                 paddingLeft: 60,
                 paddingRight: 60,
                 pointerEvents: "none",
               }}>
-                <p style={{
-                  color: "#F4F1E9",
-                  background: "rgba(0,0,0,0.72)",
-                  padding: "24px 36px",
-                  fontFamily: "Space Grotesk",
-                  fontWeight: 700,
-                  fontSize: 88,
-                  lineHeight: 1.15,
-                  letterSpacing: "-0.01em",
-                  borderRadius: 18,
-                  margin: 0,
-                  textAlign: "center",
-                  textTransform: "uppercase",
-                  alignSelf: "center",
-                  maxWidth: "100%",
-                }}>{chunk.text}</p>
+                <ChunkCaption text={chunk.text} />
               </AbsoluteFill>
             </Sequence>
           );

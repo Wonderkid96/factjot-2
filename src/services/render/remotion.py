@@ -11,8 +11,13 @@ from src.core.paths import REMOTION_DIR
 from src.pipelines.models import Script, MediaSet
 
 
-WORDS_PER_CAPTION_CHUNK = 4  # IG reel best practice: 3-5 words per displayed chunk
+WORDS_PER_CAPTION_CHUNK = 3   # Punchier rhythm, TikTok-standard. Lower than 4-word chunks reads faster on small screens.
 TITLE_HOLD_SECONDS = 2.5      # Hold the hook on screen before narration starts (Toby's request, v1 used 1.5)
+# MP3 encoding adds a small latency that alignment timestamps don't account for —
+# raw alignment says "word starts at 1.20s" but the MP3 plays it at 1.40s. We display
+# captions a touch EARLIER so they catch up to the encoded audio. Borrowed from
+# ViralContent-Factory's SYNC_OFFSET dial (phase2.py).
+SUBTITLE_SYNC_OFFSET_SECONDS = -0.2
 
 
 def _compute_timeline(script, alignment, fps: int = 30) -> dict:
@@ -56,12 +61,12 @@ def _compute_timeline(script, alignment, fps: int = 30) -> dict:
 
     # All timestamps from alignment are in audio-clock seconds (0 = start of
     # narration audio). We offset everything by TITLE_HOLD so the hook gets a
-    # silent beat before the voice kicks in. The composition plays the audio
-    # starting at TITLE_HOLD frames into the video.
+    # silent beat before the voice kicks in. Plus SUBTITLE_SYNC_OFFSET to
+    # compensate for MP3 encoding latency.
     title_hold = TITLE_HOLD_SECONDS
 
     def f(t: float) -> int:
-        return max(0, int((t + title_hold) * fps))
+        return max(0, int((t + title_hold + SUBTITLE_SYNC_OFFSET_SECONDS) * fps))
 
     # Hook window — first `hook_words` words of alignment.
     hook_start = float(alignment[0]["start"]) if alignment else 0.0

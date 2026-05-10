@@ -156,8 +156,11 @@ function BeatStill({ path, durationFrames }: { path: string; durationFrames: num
         }}
       />
       {/* Dark gradient at the bottom half so captions stay legible */}
+      {/* Top + bottom gradients: top keeps the factjot wordmark legible
+          against light assets; bottom keeps captions legible. */}
       <AbsoluteFill style={{
-        background: "linear-gradient(to bottom, rgba(0,0,0,0) 35%, rgba(0,0,0,0.55) 90%)",
+        background:
+          "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 18%, rgba(0,0,0,0) 35%, rgba(0,0,0,0.55) 90%)",
         pointerEvents: "none",
       }} />
     </AbsoluteFill>
@@ -173,8 +176,11 @@ function BeatVideo({ path }: { path: string }) {
         src={path}
         style={{ width: "100%", height: "100%", objectFit: "cover" }}
       />
+      {/* Top + bottom gradients: top keeps the factjot wordmark legible
+          against light assets; bottom keeps captions legible. */}
       <AbsoluteFill style={{
-        background: "linear-gradient(to bottom, rgba(0,0,0,0) 35%, rgba(0,0,0,0.55) 90%)",
+        background:
+          "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 18%, rgba(0,0,0,0) 35%, rgba(0,0,0,0.55) 90%)",
         pointerEvents: "none",
       }} />
     </AbsoluteFill>
@@ -284,12 +290,20 @@ function CTA({ text }: { text: string }) {
 }
 
 // Persistent chrome — factjot wordmark top-left across the whole reel
-// AFTER the intro overlay finishes. v1 uses this on every frame.
+// AFTER the intro overlay finishes. Drop shadow + slight scale-up vs the
+// original 36 so it survives against light beat assets (e.g. cream maps).
 function ChromeOverlay() {
   return (
     <AbsoluteFill style={{ pointerEvents: "none" }}>
-      <div style={{ position: "absolute", top: 56, left: 56 }}>
-        <Wordmark size={36} />
+      <div style={{
+        position: "absolute",
+        top: 60,
+        left: 56,
+        // Drop shadow on the wordmark text — works even when the gradient
+        // doesn't fully darken the top edge.
+        filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.7))",
+      }}>
+        <Wordmark size={44} />
       </div>
     </AbsoluteFill>
   );

@@ -29,7 +29,7 @@ Return a JSON object with these keys:
 - `hook`: 6-10 words. The first 1.5 seconds. Must STOP the thumb. See hook formula below.
 - `topic_entity`: 1-3 word canonical proper noun for the WHOLE reel, OR null if abstract.
 - `beats`: EXACTLY 4 items. Each item: `{{ "text": str, "visual_brief": {{ ... }} }}`. Beat text: 12-18 words.
-- `cta`: 8-12 words. The closing line that lands the consequence or pattern. NOT a "follow for more".
+- `cta`: 8-12 words. The closing line that lands the consequence or pattern. **Do NOT include "follow for more" or "follow fact jot" — that's appended automatically by the brand outro after your CTA.**
 - `citations`: list of `{{ "claim": str, "source_url": str, "source_quote": str }}`.
 
 # HOOK FORMULA

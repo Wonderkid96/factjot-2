@@ -8,6 +8,7 @@ export const factReelSchema = z.object({
   hook: z.string(),
   cta: z.string(),
   narration_audio: z.string().nullable(),
+  intro_overlay: z.string().nullable().optional(),
   alignment: z.array(z.any()),
   beats: z.array(z.object({
     text: z.string(),
@@ -20,14 +21,17 @@ export const factReelSchema = z.object({
   })),
 });
 
+const INTRO_DURATION_S = 1.37;  // matches v1's factjot_intro.mov ProRes
+
 export const FactReel: React.FC<z.infer<typeof factReelSchema>> = ({
-  hook, cta, narration_audio, beats,
+  hook, cta, narration_audio, beats, intro_overlay,
 }) => {
   const { fps } = useVideoConfig();
 
   const HOOK_FRAMES = Math.floor(fps * 1.5);
   const lastBeatEnd = beats.length ? beats[beats.length - 1].end_frame : HOOK_FRAMES;
   const CTA_FRAMES = Math.floor(fps * 1.8);
+  const INTRO_FRAMES = Math.floor(fps * INTRO_DURATION_S);
 
   return (
     <AbsoluteFill style={{ backgroundColor: "#0A0A0A" }}>
@@ -88,6 +92,20 @@ export const FactReel: React.FC<z.infer<typeof factReelSchema>> = ({
           }}>{cta}</p>
         </AbsoluteFill>
       </Sequence>
+
+      {/* Brand intro overlay — ProRes 4444 with alpha. Plays on top of everything
+          for the first ~1.37s. v1 used the exact same .mov; carried over verbatim. */}
+      {intro_overlay && (
+        <Sequence from={0} durationInFrames={INTRO_FRAMES}>
+          <AbsoluteFill style={{ pointerEvents: "none" }}>
+            <OffthreadVideo
+              src={intro_overlay}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              muted
+            />
+          </AbsoluteFill>
+        </Sequence>
+      )}
     </AbsoluteFill>
   );
 };

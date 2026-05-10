@@ -106,12 +106,18 @@ def build_video_spec(
             return _to_url(p, base_url, run_dir)
         return str(p) if p else None
 
+    # Brand intro overlay (ProRes 4444 with alpha). Pipeline copies the file
+    # into the run dir as `intro.mov` if available; if not, render skips it.
+    intro_in_run = run_dir / "intro.mov" if run_dir else None
+    intro_url = asset_url(intro_in_run) if intro_in_run and intro_in_run.exists() else None
+
     return {
         "composition": composition_id,
         "title": script.title,
         "hook": script.hook,
         "cta": script.cta,
         "narration_audio": asset_url(narration),
+        "intro_overlay": intro_url,
         "alignment": media.narration_alignment,
         "beats": [
             {

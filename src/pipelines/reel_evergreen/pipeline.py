@@ -12,7 +12,7 @@ from pathlib import Path
 import requests
 
 from src.core.logger import get_logger
-from src.core.paths import OUTPUT_DIR
+from src.core.paths import BRAND_DIR, OUTPUT_DIR
 from src.core.run_id import new_run_id
 from src.pipelines.base import Pipeline
 from src.pipelines.models import (
@@ -35,6 +35,7 @@ log = get_logger("pipelines.reel_evergreen")
 
 POSTED_LEDGER = "posted.jsonl"
 RECENT_TOPIC_WINDOW = 90  # last N entries treated as "recent" for dedup
+INTRO_OVERLAY_PATH = BRAND_DIR / "intros" / "factjot_intro.mov"
 
 
 class ReelEvergreenPipeline(Pipeline):
@@ -184,6 +185,11 @@ class ReelEvergreenPipeline(Pipeline):
         # have everything they need without rerunning the full pipeline.
         if media.narration_alignment:
             rc.alignment_path.write_text(json.dumps(media.narration_alignment))
+
+        # Stage the brand intro overlay into the run dir so the HTTP server bridge
+        # serves it. FactReel.tsx falls back gracefully if the file is missing.
+        if INTRO_OVERLAY_PATH.exists():
+            shutil.copy2(INTRO_OVERLAY_PATH, rc.dir / "intro.mov")
 
         video_path = render_via_remotion(script, media, rc.video_path, composition_id=self.remotion_composition)
 

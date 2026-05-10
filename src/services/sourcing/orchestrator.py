@@ -1,8 +1,39 @@
+"""Pool-then-rank sourcing orchestrator.
+
+v1 lesson (Toby's audit): returning the first passing candidate gives "the same
+boring image five times" because the cascade always converges on the same source
+ordering. Better: pool 20-40 candidates across providers, score, vision-check the
+top survivors, return the highest-scoring candidate that passes.
+
+Hard validation (resolution gate) runs BEFORE scoring so junk never enters the pool.
+Vision verification runs AFTER scoring on the top N — keeps Haiku calls bounded
+even when the pool is large.
+"""
 from dataclasses import dataclass
+
+from src.core.logger import get_logger
 from src.pipelines.models import VisualBrief
-from src.services.sourcing.wikimedia import search_commons, traverse_category, WikimediaCandidate
+from src.services.sourcing.wikimedia import (
+    search_commons,
+    traverse_category,
+    WikimediaCandidate,
+)
 from src.services.sourcing.pexels import search_pexels_videos, PexelsVideoCandidate
 from src.services.sourcing.pixabay import search_pixabay_videos, PixabayVideoCandidate
+from src.services.verification.vision import check_image_subject
+
+
+log = get_logger("sourcing.orchestrator")
+
+
+# Provider tier — higher = more trusted. Wikimedia is curated; Pexels/Pixabay are stock.
+PROVIDER_SCORE = {"wikimedia": 6, "pexels": 3, "pixabay": 2}
+
+# How many top-ranked candidates to vision-verify before giving up. Bounds Haiku calls.
+VISION_BUDGET = 3
+
+# Quality floor: candidates below this resolution never enter the pool.
+MIN_DIMENSION = 1080
 
 
 @dataclass
@@ -27,41 +58,99 @@ def _from_pix(c: PixabayVideoCandidate) -> SourcedAsset:
     return SourcedAsset(c.source_url, c.width, c.height, "pixabay", c.license, "video")
 
 
-def _quality_ok(asset: SourcedAsset) -> bool:
-    """Carry-over from v1: minimum quality gate."""
-    return asset.width >= 1080 or asset.height >= 1080
+def _passes_quality(asset: SourcedAsset) -> bool:
+    """Hard gate: minimum resolution. Reject below 1080p before scoring."""
+    return asset.width >= MIN_DIMENSION or asset.height >= MIN_DIMENSION
+
+
+def _score(asset: SourcedAsset, brief: VisualBrief) -> int:
+    """Deterministic score — higher is better.
+
+    Components:
+    - provider tier (Wikimedia > Pexels > Pixabay)
+    - resolution bonus (≥2000px gets +2, ≥1500px gets +1)
+    - media-type match with preferred_source (+2 if matches)
+    """
+    score = PROVIDER_SCORE.get(asset.provider, 0)
+    longest = max(asset.width, asset.height)
+    if longest >= 2000:
+        score += 2
+    elif longest >= 1500:
+        score += 1
+    if (brief.preferred_source == "video") == (asset.media_type == "video"):
+        score += 2
+    return score
+
+
+def _safe(label: str, fn, *args, **kwargs):
+    """Per-source error tolerance — one provider's timeout doesn't kill the pool."""
+    try:
+        return fn(*args, **kwargs)
+    except Exception as e:
+        log.warning("source_failed", source=label, error=str(e)[:200])
+        return []
+
+
+def _gather_pool(brief: VisualBrief, wikimedia_category: str | None) -> list[SourcedAsset]:
+    """Collect candidates across all providers without picking yet.
+
+    Wikimedia category (if available) goes first because it's the most curated.
+    Then Wikimedia keyword search across the brief's queries. Then Pexels +
+    Pixabay video search if the beat prefers motion.
+    """
+    pool: list[SourcedAsset] = []
+
+    if wikimedia_category:
+        for c in _safe("wikimedia_category", traverse_category, wikimedia_category):
+            pool.append(_from_wm(c))
+
+    for q in brief.queries[:3]:
+        for c in _safe("wikimedia_search", search_commons, q):
+            pool.append(_from_wm(c))
+
+    if brief.preferred_source == "video":
+        for q in brief.queries[:3]:
+            for c in _safe("pexels", search_pexels_videos, q):
+                pool.append(_from_pex(c))
+            for c in _safe("pixabay", search_pixabay_videos, q):
+                pool.append(_from_pix(c))
+    else:
+        # Even for image-preferred beats, fall back to Pexels stills if Wikimedia is dry
+        for q in brief.queries[:2]:
+            for c in _safe("pexels_fallback", search_pexels_videos, q):
+                pool.append(_from_pex(c))
+
+    return [a for a in pool if _passes_quality(a)]
 
 
 def source_for_beat(brief: VisualBrief, wikimedia_category: str | None = None) -> SourcedAsset | None:
-    """Cascading sourcing per spec §10.4 + frontier #4 priority."""
+    """Pool-then-rank: gather → quality-gate → score → vision-check top N → pick.
 
-    # R0 (frontier #4): Wikimedia category traversal if entity is named
-    if wikimedia_category:
-        for c in traverse_category(wikimedia_category):
-            asset = _from_wm(c)
-            if _quality_ok(asset):
+    Returns the highest-scoring asset that passes vision verification, or None if
+    the pool is empty or every top candidate fails verification.
+    """
+    pool = _gather_pool(brief, wikimedia_category)
+    if not pool:
+        log.info("source_pool_empty", subject=brief.subject)
+        return None
+
+    pool.sort(key=lambda a: _score(a, brief), reverse=True)
+    log.info("source_pool", subject=brief.subject, pool_size=len(pool), top_provider=pool[0].provider)
+
+    # Vision verification only on images (videos vary frame-by-frame). Budget-capped.
+    checked = 0
+    for asset in pool:
+        if checked >= VISION_BUDGET:
+            # Out of vision budget — return highest unchecked candidate (still passes hard gate)
+            log.info("source_picked_unverified", url=asset.source_url, provider=asset.provider)
+            return asset
+        if asset.media_type == "image":
+            if check_image_subject(asset.source_url, brief.subject):
                 return asset
+            checked += 1
+            continue
+        # Videos skip vision check
+        return asset
 
-    # R1: Wikimedia search
-    for q in brief.queries[:2]:
-        for c in search_commons(q):
-            asset = _from_wm(c)
-            if _quality_ok(asset):
-                return asset
-
-    # R2: Pexels (video preferred for motion)
-    if brief.preferred_source == "video":
-        for q in brief.queries[:2]:
-            for c in search_pexels_videos(q):
-                asset = _from_pex(c)
-                if _quality_ok(asset):
-                    return asset
-
-    # R3: Pixabay
-    for q in brief.queries[:2]:
-        for c in search_pixabay_videos(q):
-            asset = _from_pix(c)
-            if _quality_ok(asset):
-                return asset
-
+    log.info("source_no_pass", subject=brief.subject, pool_size=len(pool))
     return None

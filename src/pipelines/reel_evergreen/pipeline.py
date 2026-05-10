@@ -149,7 +149,14 @@ class ReelEvergreenPipeline(Pipeline):
                 continue
             if vb.period_constraints and not era_compatible(sourced.source_url, vb.period_constraints):
                 continue
-            local = rc.assets_dir / f"beat-{i}.{sourced.media_type[:3]}"
+            # Pick a sane extension from the source URL or fall back by media type.
+            # `media_type[:3]` produced "ima" for images — Remotion couldn't decode it.
+            url_suffix = Path(sourced.source_url.split("?")[0]).suffix.lower()
+            if url_suffix in (".jpg", ".jpeg", ".png", ".webp", ".gif", ".mp4", ".mov", ".webm"):
+                ext = url_suffix.lstrip(".")
+            else:
+                ext = "mp4" if sourced.media_type == "video" else "jpg"
+            local = rc.assets_dir / f"beat-{i}.{ext}"
             local.write_bytes(requests.get(sourced.source_url, timeout=60).content)
             assets.append(MediaAsset(
                 beat_index=i, local_path=local, source_url=sourced.source_url,

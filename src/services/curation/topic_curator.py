@@ -1,7 +1,11 @@
 import json
 from dataclasses import dataclass
-from src.core.anthropic_client import AnthropicClient
+from src.core.anthropic_client import AnthropicClient, extract_json
+from src.core.logger import get_logger
 from src.services.state import ledgers
+
+
+log = get_logger("curation.topic_curator")
 
 
 @dataclass
@@ -73,9 +77,17 @@ def curate_topic(recent_topics: list[str], discovered) -> CandidateTopic:
         recent=", ".join(recent_topics) or "(none)",
         candidates=candidates_summary,
     ))
-    scored = [CandidateTopic(**c) for c in json.loads(scoring_text)]
+    try:
+        scored = [CandidateTopic(**c) for c in json.loads(extract_json(scoring_text))]
+    except (json.JSONDecodeError, TypeError) as e:
+        log.error("scorer_json_parse_failed", error=str(e), preview=scoring_text[:500])
+        raise
     critique_text = _call_opus(CRITIQUE_PROMPT.format(candidates=json.dumps([c.__dict__ for c in scored], indent=2)))
-    critique = json.loads(critique_text)
+    try:
+        critique = json.loads(extract_json(critique_text))
+    except json.JSONDecodeError as e:
+        log.error("critique_json_parse_failed", error=str(e), preview=critique_text[:500])
+        raise
     if critique.get("winner_index") is None:
         raise RuntimeError(f"All candidates rejected: {critique['rejected']}")
     winner = scored[critique["winner_index"]]

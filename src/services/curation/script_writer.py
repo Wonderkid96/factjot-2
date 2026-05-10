@@ -1,7 +1,11 @@
 import json
-from src.core.anthropic_client import AnthropicClient
+from src.core.anthropic_client import AnthropicClient, extract_json
+from src.core.logger import get_logger
 from src.core.paths import REPO_ROOT
 from src.pipelines.models import Script
+
+
+log = get_logger("curation.script_writer")
 
 STYLE_GUIDE_PATH = REPO_ROOT / "style" / "style-guide.md"
 
@@ -34,5 +38,9 @@ def generate_script(topic: str, angle: str) -> Script:
     sys = SYSTEM_PROMPT.format(style_guide=_load_style_guide())
     user = f"Write a Fact Jot reel script about: {topic}\nAngle: {angle}\n\nReturn JSON only."
     raw = _call_writer(sys, user)
-    data = json.loads(raw)
+    try:
+        data = json.loads(extract_json(raw))
+    except json.JSONDecodeError as e:
+        log.error("script_json_parse_failed", error=str(e), preview=raw[:500])
+        raise
     return Script.model_validate(data)

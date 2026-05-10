@@ -1,9 +1,46 @@
+import re
 from typing import Any
 
 from anthropic import Anthropic
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from src.core.config import Settings
+
+
+_FENCE_RE = re.compile(r"```(?:json)?\s*\n?(.*?)\n?```", re.DOTALL)
+
+
+def extract_json(text: str) -> str:
+    """Pull JSON out of an LLM response that may include markdown fences or prose.
+
+    LLMs frequently wrap structured output in ```json ... ``` or add a
+    "Here is the JSON:" preamble. Strict json.loads() on the raw response
+    fails. This helper strips fences, then locates the outer-most JSON
+    array/object and returns just that span.
+    """
+    if not text:
+        return text
+
+    # Strip markdown code fence if present
+    fence = _FENCE_RE.search(text)
+    if fence:
+        text = fence.group(1)
+
+    text = text.strip()
+
+    # Already starts with JSON? Done.
+    if text.startswith("{") or text.startswith("["):
+        return text
+
+    # Find an outer-most array or object
+    for start_char, end_char in (("[", "]"), ("{", "}")):
+        start = text.find(start_char)
+        end = text.rfind(end_char)
+        if start != -1 and end > start:
+            return text[start : end + 1]
+
+    # No JSON-looking content; return as-is so json.loads raises a clear error
+    return text
 
 
 class AnthropicClient:

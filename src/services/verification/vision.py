@@ -2,6 +2,7 @@ import json
 import base64
 import requests
 from anthropic import Anthropic
+from src.core.anthropic_client import extract_json
 from src.core.config import Settings
 
 
@@ -25,7 +26,7 @@ def _call_vision(image_b64: str, expected_subject: str) -> dict:
             ],
         }],
     )
-    return json.loads(msg.content[0].text)  # type: ignore[union-attr]
+    return json.loads(extract_json(msg.content[0].text))  # type: ignore[union-attr]
 
 
 CONFIDENCE_FLOOR = 0.7

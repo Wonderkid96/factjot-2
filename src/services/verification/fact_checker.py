@@ -1,6 +1,6 @@
 import json
 from dataclasses import dataclass
-from src.core.anthropic_client import AnthropicClient
+from src.core.anthropic_client import AnthropicClient, extract_json
 
 
 @dataclass
@@ -26,7 +26,7 @@ def _llm_judge(claim: str, sources: list[str]) -> dict:
         system="You are a strict fact-checker. Be conservative. Carry-over from v1 §verification floor.",
         user=JUDGE_PROMPT.format(claim=claim, sources=", ".join(sources)),
     )
-    return json.loads(raw)
+    return json.loads(extract_json(raw))
 
 
 def verify_claim(claim: str, sources: list[str]) -> VerificationResult:

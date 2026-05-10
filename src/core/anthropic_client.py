@@ -120,4 +120,15 @@ class AnthropicClient:
             system=sys_block,
             messages=[{"role": "user", "content": user}],
         )
-        return msg.content[0].text  # type: ignore[union-attr]
+        # Be defensive: responses may include thinking blocks, tool blocks, or be
+        # empty in edge cases (rate limit, content filter, max_tokens=0). Walk
+        # the content list and return the first text block we find.
+        for block in msg.content or []:
+            if getattr(block, "type", None) == "text" or hasattr(block, "text"):
+                return block.text  # type: ignore[union-attr]
+        log.error(
+            "anthropic_empty_response",
+            stop_reason=getattr(msg, "stop_reason", None),
+            content_blocks=len(msg.content or []),
+        )
+        raise RuntimeError(f"Anthropic returned no text content (stop_reason={getattr(msg, 'stop_reason', None)})")

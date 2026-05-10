@@ -124,10 +124,12 @@ def _gather_pool(brief: VisualBrief, wikimedia_category: str | None) -> list[Sou
 
 
 def source_for_beat(brief: VisualBrief, wikimedia_category: str | None = None) -> SourcedAsset | None:
-    """Pool-then-rank: gather → quality-gate → score → vision-check top N → pick.
+    """Pool-then-rank with best-effort fallback: gather → score → vision-check top N → pick.
 
-    Returns the highest-scoring asset that passes vision verification, or None if
-    the pool is empty or every top candidate fails verification.
+    A non-empty pool ALWAYS returns an asset — beats with empty visuals look broken,
+    so we'd rather use a Haiku-rejected candidate than nothing. Vision check is a
+    quality preference, not a hard gate. Returns None only when the pool is truly
+    empty (every provider returned zero or failed).
     """
     pool = _gather_pool(brief, wikimedia_category)
     if not pool:
@@ -137,20 +139,21 @@ def source_for_beat(brief: VisualBrief, wikimedia_category: str | None = None) -
     pool.sort(key=lambda a: _score(a, brief), reverse=True)
     log.info("source_pool", subject=brief.subject, pool_size=len(pool), top_provider=pool[0].provider)
 
-    # Vision verification only on images (videos vary frame-by-frame). Budget-capped.
+    # Vision verification only on images, budget-capped. Track the best image we saw
+    # in case nothing passes — beats can't have empty slots.
     checked = 0
     for asset in pool:
-        if checked >= VISION_BUDGET:
-            # Out of vision budget — return highest unchecked candidate (still passes hard gate)
-            log.info("source_picked_unverified", url=asset.source_url, provider=asset.provider)
+        if asset.media_type != "image":
+            # Videos skip vision check (frames vary too much for a single-frame test)
             return asset
-        if asset.media_type == "image":
-            if check_image_subject(asset.source_url, brief.subject):
-                return asset
-            checked += 1
-            continue
-        # Videos skip vision check
-        return asset
+        if checked >= VISION_BUDGET:
+            log.info("source_picked_unverified", url=asset.source_url, provider=asset.provider, reason="vision_budget_spent")
+            return asset
+        if check_image_subject(asset.source_url, brief.subject):
+            return asset
+        checked += 1
 
-    log.info("source_no_pass", subject=brief.subject, pool_size=len(pool))
-    return None
+    # Vision rejected every image we could afford to check. Return the highest-scored
+    # candidate anyway — empty slots are worse than imperfect ones.
+    log.info("source_picked_vision_rejected", url=pool[0].source_url, provider=pool[0].provider, checked=checked)
+    return pool[0]

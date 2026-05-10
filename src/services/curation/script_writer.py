@@ -39,10 +39,14 @@ The `visual_brief` for each beat is critical — visuals are sourced from search
 - BAD: "Blue whale close-up, healthy skin, slow glide through water" / "1980s gas station with high price signs" / "Animated graphic of statistics rising"
 - GOOD: "Blue whale" / "1980s gas station" / "Stock market chart"
 
-**Queries rules:**
-- 3-5 short search-engine queries (2-4 words each).
-- First query is most specific; later queries broaden out.
-- Avoid descriptive language ("close-up of", "vintage 1980s footage of"). Search engines tag content; they don't understand prose.
+**Queries rules — progressively widening, search-engine-tag style:**
+- Exactly 3 queries per beat: SPECIFIC → GENERAL → BROAD.
+- Each query: 1-3 words, no prose, no descriptive adjectives, no time-of-day, no shot-type words.
+- Stock and archive search engines tag images by keyword; "horse hoof" matches; "vintage close-up of a horse hoof in slow motion" matches nothing.
+- BAD: ["Close-up of a horse's lower leg and hoof from the side", "Horse foot anatomy", "Horse"]
+- GOOD: ["horse hoof", "horse leg", "horse"]
+- BAD: ["Stunning vintage 1980s footage of a gas station with rising prices"]
+- GOOD: ["1980s gas station", "gas station", "petrol pump"]
 
 **Preferred source:**
 - "video" for kinetic / atmospheric beats (motion, change, action).

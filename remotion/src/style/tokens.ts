@@ -1,4 +1,14 @@
 import brandKit from "../../../brand/brand_kit.json";
+import { loadFont as loadArchivoBlack } from "@remotion/google-fonts/ArchivoBlack";
+import { loadFont as loadInstrumentSerif } from "@remotion/google-fonts/InstrumentSerif";
+import { loadFont as loadSpaceGrotesk } from "@remotion/google-fonts/SpaceGrotesk";
+
+// Load brand fonts at module level. Remotion blocks render via delayRender
+// internally until the font files are fetched and applied.
+loadArchivoBlack();
+loadInstrumentSerif();
+loadInstrumentSerif("italic", { weights: ["400"] });
+loadSpaceGrotesk("normal", { weights: ["500", "600", "700"] });
 
 export const palette = {
   paper: brandKit.colors.paper,

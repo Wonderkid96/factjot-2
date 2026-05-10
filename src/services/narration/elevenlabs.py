@@ -82,6 +82,17 @@ class ElevenLabsNarrator:
                 prev_end = float(e)
         if cur_chars:
             words.append({"word": "".join(cur_chars), "start": cur_start or 0.0, "end": prev_end})
+
+        # The MP3 we hand to the renderer was atempo'd by self.speed, so the
+        # alignment seconds need to be divided by the same factor to stay
+        # aligned with the actual playback.
+        if self.speed != 1.0:
+            words = [
+                {"word": w["word"],
+                 "start": w["start"] / self.speed,
+                 "end": w["end"] / self.speed}
+                for w in words
+            ]
         return words
 
     def synthesize(self, text: str, out_path: Path) -> NarrationResult:

@@ -22,6 +22,8 @@ export const factReelSchema = z.object({
   // ALL frame values are ABSOLUTE — relative to start of the video (frame 0).
   hook_window: windowSchema.optional(),
   cta_window: windowSchema.optional(),
+  outro_window: windowSchema.optional(),
+  outro_text: z.string().optional(),
   total_frames: z.number().optional(),
   narration_offset_frames: z.number().optional(),
   beats: z.array(z.object({
@@ -201,18 +203,92 @@ function ChromeOverlay() {
   );
 }
 
+// Outro — "Follow fact jot for more facts". Big wordmark + the line.
+function Outro({ text }: { text: string }) {
+  const frame = useCurrentFrame();
+  const opacity = interpolate(frame, [0, 14], [0, 1], { extrapolateRight: "clamp" });
+  const translateY = interpolate(frame, [0, 14], [18, 0], {
+    extrapolateRight: "clamp",
+    easing: Easing.out(Easing.cubic),
+  });
+  return (
+    <AbsoluteFill style={{
+      display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
+      gap: 36, backgroundColor: "rgba(10,10,10,0.55)",
+    }}>
+      <div style={{ opacity, transform: `translateY(${translateY}px)` }}>
+        <Wordmark size={96} />
+      </div>
+      <p style={{
+        color: palette.off_white,
+        fontFamily: "Space Grotesk",
+        fontWeight: 700,
+        fontSize: 52,
+        lineHeight: 1.2,
+        textAlign: "center",
+        margin: 0,
+        padding: "0 80px",
+        textTransform: "lowercase",
+        textShadow: "0 4px 18px rgba(0,0,0,0.6)",
+        opacity,
+        transform: `translateY(${translateY}px)`,
+      }}>{text}</p>
+    </AbsoluteFill>
+  );
+}
+
+// Noise grain overlay — SVG fractalNoise reseeded each frame for temporal flicker.
+// Mix-blend-mode: overlay puts the grain ON TOP of whatever asset is below, at
+// low opacity. Matches v1's ffmpeg noise=c0s=7:c0f=t aesthetic.
+function GrainOverlay() {
+  const frame = useCurrentFrame();
+  const seed = frame % 256;
+  return (
+    <AbsoluteFill style={{
+      pointerEvents: "none",
+      mixBlendMode: "overlay",
+      opacity: 0.18,
+    }}>
+      <svg width="100%" height="100%" style={{ display: "block" }}>
+        <filter id={`grain-${seed}`}>
+          <feTurbulence type="fractalNoise" baseFrequency="1.8" numOctaves="2" seed={seed} stitchTiles="stitch" />
+          <feColorMatrix values="0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 1.4 0" />
+        </filter>
+        <rect width="100%" height="100%" filter={`url(#grain-${seed})`} />
+      </svg>
+    </AbsoluteFill>
+  );
+}
+
+// Subtle weave — sin-based ±1.5px translate so everything wiggles ever so slightly.
+// Apply as a wrapper around the entire video tree.
+function Weave({ children }: { children: React.ReactNode }) {
+  const frame = useCurrentFrame();
+  const x = Math.sin(frame * 0.045) * 1.5;
+  const y = Math.cos(frame * 0.038) * 1.2;
+  return (
+    <AbsoluteFill style={{ transform: `translate(${x}px, ${y}px)` }}>
+      {children}
+    </AbsoluteFill>
+  );
+}
+
 
 // ---------- Composition ----------
 
 export const FactReel: React.FC<z.infer<typeof factReelSchema>> = ({
   hook, cta, narration_audio, beats, intro_overlay,
-  hook_window, cta_window, narration_offset_frames,
+  hook_window, cta_window, outro_window, outro_text,
+  narration_offset_frames,
 }) => {
   const { fps } = useVideoConfig();
 
   const hookEnd = hook_window?.end_frame ?? Math.floor(fps * 1.5);
   const ctaStart = cta_window?.start_frame ?? (beats.length ? beats[beats.length - 1].end_frame : hookEnd);
   const ctaEnd = cta_window?.end_frame ?? (ctaStart + Math.floor(fps * 1.8));
+  const outroStart = outro_window?.start_frame ?? ctaEnd;
+  const outroEnd = outro_window?.end_frame ?? (outroStart + Math.floor(fps * 2.0));
   const INTRO_FRAMES = Math.floor(fps * INTRO_DURATION_S);
   const narrationDelay = narration_offset_frames ?? 0;
 
@@ -223,6 +299,9 @@ export const FactReel: React.FC<z.infer<typeof factReelSchema>> = ({
           <Audio src={narration_audio} />
         </Sequence>
       )}
+
+      {/* Subtle weave wraps every visual layer so the whole frame wiggles slightly. */}
+      <Weave>
 
       {/* Hook — silent title hold, then narration kicks in during the same window */}
       <Sequence from={0} durationInFrames={Math.max(hookEnd, 1)}>
@@ -276,12 +355,25 @@ export const FactReel: React.FC<z.infer<typeof factReelSchema>> = ({
         <CTA text={cta} />
       </Sequence>
 
-      {/* Persistent factjot wordmark — appears after the intro overlay completes. */}
-      <Sequence from={INTRO_FRAMES}>
+      {/* Outro — "Follow fact jot for more facts" + big wordmark. */}
+      <Sequence from={outroStart} durationInFrames={Math.max(outroEnd - outroStart, 1)}>
+        <Outro text={outro_text || "Follow fact jot for more facts"} />
+      </Sequence>
+
+      {/* Persistent factjot wordmark — appears after the intro overlay completes.
+          Hidden during the outro (which has its own big wordmark centred). */}
+      <Sequence from={INTRO_FRAMES} durationInFrames={Math.max(outroStart - INTRO_FRAMES, 1)}>
         <ChromeOverlay />
       </Sequence>
 
-      {/* Brand intro overlay — alpha-channel video on top for the first 1.37s. */}
+      </Weave>
+
+      {/* Noise grain — over everything, mix-blend-mode overlay. Sits OUTSIDE the
+          weave wrapper so it stays pinned to the frame, not shifted with the asset. */}
+      <GrainOverlay />
+
+      {/* Brand intro overlay — alpha-channel video on top for the first 1.37s.
+          Sits OUTSIDE the weave so it's perfectly aligned with the frame edge. */}
       {intro_overlay && (
         <Sequence from={0} durationInFrames={INTRO_FRAMES}>
           <AbsoluteFill style={{ pointerEvents: "none" }}>

@@ -18,6 +18,11 @@ TITLE_HOLD_SECONDS = 2.5      # Hold the hook on screen before narration starts 
 # captions a touch EARLIER so they catch up to the encoded audio. Borrowed from
 # ViralContent-Factory's SYNC_OFFSET dial (phase2.py).
 SUBTITLE_SYNC_OFFSET_SECONDS = -0.2
+# Brand outro spoken at the end of every reel. Appended to the narration text
+# so the voice says it; FactReel renders it as its own Sequence with the big wordmark.
+OUTRO_TEXT = "Follow fact jot for more facts."
+# Tail buffer in seconds AFTER the last narrated word, so the video doesn't slam shut.
+TAIL_BUFFER_SECONDS = 1.2
 
 
 def _compute_timeline(script, alignment, fps: int = 30) -> dict:
@@ -39,6 +44,7 @@ def _compute_timeline(script, alignment, fps: int = 30) -> dict:
     beats = script.beats
     hook_words = len(script.hook.split()) if script.hook else 0
     cta_words = len(script.cta.split()) if script.cta else 0
+    outro_words = len(OUTRO_TEXT.split())
 
     if not alignment:
         # Fallback: even split over 60s
@@ -55,7 +61,8 @@ def _compute_timeline(script, alignment, fps: int = 30) -> dict:
             "hook": {"start_frame": 0, "end_frame": int(1.5 * fps)},
             "beats": beat_dicts,
             "cta": {"start_frame": int(60 * fps), "end_frame": int(62 * fps)},
-            "total_frames": int(62 * fps),
+            "outro": {"start_frame": int(62 * fps), "end_frame": int(64 * fps)},
+            "total_frames": int(65 * fps),
             "narration_offset_frames": int(TITLE_HOLD_SECONDS * fps),
         }
 
@@ -107,20 +114,31 @@ def _compute_timeline(script, alignment, fps: int = 30) -> dict:
         })
         word_idx = end_idx + 1
 
-    # CTA window — last `cta_words` words of alignment.
-    if cta_words and word_idx < len(alignment):
+    # CTA window — `cta_words` words AFTER beats and BEFORE outro.
+    # Outro window — last `outro_words` words.
+    outro_word_start = max(0, len(alignment) - outro_words)
+    if cta_words and word_idx < outro_word_start:
         cta_start = float(alignment[word_idx]["start"])
-        cta_end = float(alignment[-1]["end"]) + 0.2
+        cta_end_idx = min(word_idx + cta_words - 1, outro_word_start - 1)
+        cta_end = float(alignment[cta_end_idx]["end"]) + 0.2
     else:
-        cta_start = float(alignment[-1]["end"]) if alignment else 0.0
-        cta_end = cta_start + 1.5
+        cta_start = float(alignment[max(0, outro_word_start - 1)]["end"]) if alignment else 0.0
+        cta_end = cta_start + 1.0
 
-    total_seconds = float(alignment[-1]["end"]) + 0.4 if alignment else 60.0
+    if outro_words and outro_word_start < len(alignment):
+        outro_start = float(alignment[outro_word_start]["start"])
+        outro_end = float(alignment[-1]["end"]) + 0.3
+    else:
+        outro_start = cta_end
+        outro_end = outro_start + 1.5
+
+    total_seconds = (float(alignment[-1]["end"]) if alignment else 60.0) + TAIL_BUFFER_SECONDS
 
     return {
         "hook": {"start_frame": 0, "end_frame": f(hook_end)},
         "beats": beat_dicts,
         "cta": {"start_frame": f(cta_start), "end_frame": f(cta_end)},
+        "outro": {"start_frame": f(outro_start), "end_frame": f(outro_end)},
         "total_frames": f(total_seconds),
         "narration_offset_frames": int(title_hold * fps),
     }
@@ -204,6 +222,8 @@ def build_video_spec(
         # is how long to delay the audio Sequence so the hook can land first.
         "hook_window": timeline["hook"],
         "cta_window": timeline["cta"],
+        "outro_window": timeline["outro"],
+        "outro_text": OUTRO_TEXT,
         "total_frames": timeline["total_frames"],
         "narration_offset_frames": timeline["narration_offset_frames"],
         "beats": [

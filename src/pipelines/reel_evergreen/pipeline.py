@@ -213,7 +213,14 @@ class ReelEvergreenPipeline(Pipeline):
         if self.reuse_narration_from:
             return self._copy_prior_narration(rc)
 
-        full_text = script.hook + " " + " ".join(b.text for b in script.beats) + " " + script.cta
+        # Append the brand outro so the voice says "Follow fact jot for more facts"
+        # at the end of every reel. _compute_timeline extracts its window.
+        full_text = (
+            script.hook + " "
+            + " ".join(b.text for b in script.beats) + " "
+            + script.cta + " "
+            + OUTRO_TEXT
+        )
         return ElevenLabsNarrator().synthesize(full_text, rc.audio_path)
 
     def _copy_prior_narration(self, rc: RunContext) -> NarrationResult:

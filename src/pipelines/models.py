@@ -52,6 +52,12 @@ class Script(BaseModel):
     cta: str
     citations: list[Citation]
     post_metadata: PostMetadata | None = None
+    # Top-level entity anchor for the whole reel. Used to propagate Wikimedia
+    # category sourcing to every beat — a JFK reel pulls from
+    # Category:John F. Kennedy across all 6 beats, not just the one whose
+    # visual_brief happens to mention him. None for abstract topics with no
+    # specific person/place/event/object at the centre.
+    topic_entity: str | None = None
 
 
 class MediaAsset(BaseModel):

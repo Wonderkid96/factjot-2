@@ -91,17 +91,18 @@ def _safe(label: str, fn, *args, **kwargs):
         return []
 
 
-def _gather_pool(brief: VisualBrief, wikimedia_category: str | None) -> list[SourcedAsset]:
+def _gather_pool(brief: VisualBrief, wikimedia_categories: list[str]) -> list[SourcedAsset]:
     """Collect candidates across all providers without picking yet.
 
-    Wikimedia category (if available) goes first because it's the most curated.
-    Then Wikimedia keyword search across the brief's queries. Then Pexels +
-    Pixabay video search if the beat prefers motion.
+    Wikimedia categories (beat-specific + topic-level when both resolve) go
+    first because they're curated. Then Wikimedia keyword search across the
+    brief's queries. Then Pexels + Pixabay video search if the beat prefers
+    motion.
     """
     pool: list[SourcedAsset] = []
 
-    if wikimedia_category:
-        for c in _safe("wikimedia_category", traverse_category, wikimedia_category):
+    for cat in wikimedia_categories:
+        for c in _safe(f"wikimedia_category[{cat}]", traverse_category, cat):
             pool.append(_from_wm(c))
 
     for q in brief.queries[:3]:
@@ -123,15 +124,27 @@ def _gather_pool(brief: VisualBrief, wikimedia_category: str | None) -> list[Sou
     return [a for a in pool if _passes_quality(a)]
 
 
-def source_for_beat(brief: VisualBrief, wikimedia_category: str | None = None) -> SourcedAsset | None:
+def source_for_beat(
+    brief: VisualBrief,
+    wikimedia_category: str | None = None,
+    topic_wikimedia_category: str | None = None,
+) -> SourcedAsset | None:
     """Pool-then-rank with best-effort fallback: gather → score → vision-check top N → pick.
+
+    Two Wikimedia category anchors are honoured when present:
+    - `wikimedia_category`: resolved from this beat's specific visual_brief.subject
+    - `topic_wikimedia_category`: resolved ONCE from the script's top-level
+      topic_entity. Propagating the topic anchor to every beat means a JFK reel
+      pulls from Category:John F. Kennedy on every slot, not just the one
+      whose subject literally was "JFK".
 
     A non-empty pool ALWAYS returns an asset — beats with empty visuals look broken,
     so we'd rather use a Haiku-rejected candidate than nothing. Vision check is a
     quality preference, not a hard gate. Returns None only when the pool is truly
     empty (every provider returned zero or failed).
     """
-    pool = _gather_pool(brief, wikimedia_category)
+    cats = [c for c in (wikimedia_category, topic_wikimedia_category) if c]
+    pool = _gather_pool(brief, cats)
     if not pool:
         log.info("source_pool_empty", subject=brief.subject)
         return None

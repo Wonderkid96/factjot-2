@@ -123,12 +123,28 @@ class ReelEvergreenPipeline(Pipeline):
         self._ensure_run_id(script.title)
         rc = self._run_context()
 
+        # Resolve the topic-level entity ONCE — anchors all beats. A JFK reel
+        # pulls from Category:John F. Kennedy across every beat, not just the
+        # one whose visual_brief happened to mention him.
+        topic_wm_cat: str | None = None
+        if script.topic_entity:
+            topic_entity = resolve_entity(script.topic_entity)
+            if topic_entity:
+                topic_wm_cat = topic_entity.wikimedia_category
+            log.info("topic_entity_resolved",
+                     entity=script.topic_entity,
+                     wikimedia_category=topic_wm_cat)
+
         assets: list[MediaAsset] = []
         for i, beat in enumerate(script.beats):
             vb = beat.visual_brief if isinstance(beat.visual_brief, VisualBrief) else VisualBrief(**beat.visual_brief)
             entity = resolve_entity(vb.subject)
-            wm_cat = entity.wikimedia_category if entity else None
-            sourced = source_for_beat(vb, wikimedia_category=wm_cat)
+            beat_wm_cat = entity.wikimedia_category if entity else None
+            sourced = source_for_beat(
+                vb,
+                wikimedia_category=beat_wm_cat,
+                topic_wikimedia_category=topic_wm_cat,
+            )
             if not sourced:
                 continue
             if vb.period_constraints and not era_compatible(sourced.source_url, vb.period_constraints):

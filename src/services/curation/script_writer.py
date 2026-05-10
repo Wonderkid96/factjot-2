@@ -18,9 +18,20 @@ Style guide (always honour):
 You write a structured script as a JSON object with keys:
 - title: <=70 chars
 - hook: first 1.5s, <=12 words, must follow the hook formula
+- topic_entity: 1-3 word canonical noun phrase naming the central subject of the WHOLE reel, OR null if the topic is abstract. This anchors visuals across every beat.
 - beats: 4-7 items, each `{{ "text": str, "visual_brief": {{ ... }} }}`
 - cta: one sentence, follows CTA convention
 - citations: list of `{{ "claim": str, "source_url": str, "source_quote": str }}`
+
+**topic_entity rules:**
+- It is the proper noun the entire reel revolves around — used to pull archive footage of that subject across every beat, including beats whose specific subject is something else.
+- Examples:
+  - "John F. Kennedy was the only US president to win a Pulitzer..." → topic_entity: "John F. Kennedy"
+  - "The Johnstown Flood killed 2,209 people in 14 minutes..." → topic_entity: "Johnstown Flood"
+  - "Blue whales rarely get cancer..." → topic_entity: "Blue whale"
+  - "Quantum entanglement breaks classical intuition..." → topic_entity: null (abstract)
+  - "A man sat on a pole for 439 days to protest gas prices..." → topic_entity: "H. David Werder" (the protagonist) OR null if the man isn't the anchor — pick null when the entity is too obscure to have Wikimedia footage.
+- Single proper noun preferred. "Apollo 11", not "Apollo 11 mission to the moon".
 
 The `visual_brief` for each beat is critical — visuals are sourced from search engines (Wikimedia Commons, Pexels, Pixabay) using the brief, so vague briefs produce vague visuals. Format:
 

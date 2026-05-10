@@ -227,6 +227,33 @@ def _to_url(p: Path | str | None, base_url: str, run_dir: Path) -> str | None:
     return f"{base_url}/{rel.as_posix()}"
 
 
+def _derive_kicker(script) -> str:
+    """Derive the top-right kicker label from script content.
+
+    Rough category map keyed on substrings in the script title + topic_entity.
+    Falls back to "FACT". Category-aware curation is queued as a separate
+    enhancement; this is the placeholder so chrome lays out correctly today.
+    """
+    haystack = " ".join(filter(None, [
+        getattr(script, "title", "") or "",
+        getattr(script, "topic_entity", "") or "",
+    ])).lower()
+    categories = (
+        ("SPACE",   ("apollo", "nasa", "rocket", "satellite", "mars", "moon", "saturn", "galaxy")),
+        ("NATURE",  ("whale", "shark", "lion", "tiger", "plant", "ocean", "jungle", "forest", "bird")),
+        ("HISTORY", ("century", "ancient", "medieval", "roman", "egypt", "war", "atomic", "bomb",
+                     "kennedy", "hitler", "napoleon", "yamaguchi", "hiroshima", "nagasaki",
+                     "byzantine", "viking", "pharaoh", "dynasty")),
+        ("SCIENCE", ("quantum", "particle", "physics", "chemistry", "neuron", "dna", "genome",
+                     "atom", "molecule", "relativity")),
+        ("HUMANITY",("survivor", "tragedy", "disaster", "rescue", "miracle")),
+    )
+    for label, keys in categories:
+        if any(k in haystack for k in keys):
+            return label
+    return "FACT"
+
+
 def build_video_spec(
     script: Script,
     media: MediaSet,
@@ -259,6 +286,10 @@ def build_video_spec(
         "title": script.title,
         "hook": script.hook,
         "cta": script.cta,
+        # Short uppercase chip rendered top-right next to the wordmark.
+        # Defaults to "FACT" — category-aware derivation is queued under
+        # gotchas-transfer P2 (script topic → category map).
+        "kicker": _derive_kicker(script),
         "narration_audio": asset_url(narration),
         "intro_overlay": intro_url,
         "alignment": media.narration_alignment,

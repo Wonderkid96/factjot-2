@@ -16,6 +16,10 @@ export const factReelSchema = z.object({
   title: z.string(),
   hook: z.string(),
   cta: z.string(),
+  // Short uppercase label rendered top-right alongside the wordmark.
+  // Matches v1's "SCIENCE" / "HISTORY" / "NATURE" category chips. Defaults
+  // to "FACT" if the pipeline can't derive a more specific category.
+  kicker: z.string().default("FACT"),
   narration_audio: z.string().nullable(),
   intro_overlay: z.string().nullable().optional(),
   alignment: z.array(z.any()),
@@ -289,21 +293,33 @@ function CTA({ text }: { text: string }) {
   );
 }
 
-// Persistent chrome — factjot wordmark top-left across the whole reel
-// AFTER the intro overlay finishes. Drop shadow + slight scale-up vs the
-// original 36 so it survives against light beat assets (e.g. cream maps).
-function ChromeOverlay() {
+// Persistent chrome — factjot wordmark top-left + topic kicker top-right.
+// Both carry drop shadows so they read against any beat asset. Matches v1's
+// frame chrome verbatim.
+function ChromeOverlay({ kicker }: { kicker: string }) {
   return (
     <AbsoluteFill style={{ pointerEvents: "none" }}>
       <div style={{
         position: "absolute",
         top: 60,
         left: 56,
-        // Drop shadow on the wordmark text — works even when the gradient
-        // doesn't fully darken the top edge.
         filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.7))",
       }}>
         <Wordmark size={44} />
+      </div>
+      <div style={{
+        position: "absolute",
+        top: 76,
+        right: 56,
+        filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.7))",
+        color: palette.off_white,
+        fontFamily: "Space Grotesk",
+        fontWeight: 600,
+        fontSize: 22,
+        letterSpacing: "0.18em",
+        textTransform: "uppercase",
+      }}>
+        {kicker}
       </div>
     </AbsoluteFill>
   );
@@ -386,7 +402,7 @@ function Weave({ children }: { children: React.ReactNode }) {
 export const FactReel: React.FC<z.infer<typeof factReelSchema>> = ({
   hook, cta, narration_audio, beats, intro_overlay,
   hook_window, cta_window, outro_window, outro_text,
-  narration_offset_frames,
+  narration_offset_frames, kicker,
 }) => {
   const { fps } = useVideoConfig();
 
@@ -481,10 +497,11 @@ export const FactReel: React.FC<z.infer<typeof factReelSchema>> = ({
         <Outro text={outro_text || "Follow fact jot for more facts"} />
       </Sequence>
 
-      {/* Persistent factjot wordmark — appears after the intro overlay completes.
-          Hidden during the outro (which has its own big wordmark centred). */}
+      {/* Persistent factjot wordmark + topic kicker — appears after the intro
+          overlay completes. Hidden during the outro (which has its own big
+          wordmark centred). */}
       <Sequence from={INTRO_FRAMES} durationInFrames={Math.max(outroStart - INTRO_FRAMES, 1)}>
-        <ChromeOverlay />
+        <ChromeOverlay kicker={kicker} />
       </Sequence>
 
       </Weave>

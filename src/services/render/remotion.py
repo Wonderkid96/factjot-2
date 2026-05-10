@@ -1,5 +1,11 @@
+import contextlib
+import functools
+import http.server
 import json
+import socket
+import socketserver
 import subprocess
+import threading
 from pathlib import Path
 from src.core.paths import REMOTION_DIR
 from src.pipelines.models import Script, MediaSet
@@ -29,43 +35,71 @@ def _compute_beat_windows(beats, alignment, fps: int = 30) -> list[dict]:
     return windows
 
 
-def _rel_to_public(p: Path | str | None, public_dir: Path) -> str | None:
-    """Convert an absolute asset path into a path relative to the Remotion public dir.
+@contextlib.contextmanager
+def _serve_dir(directory: Path):
+    """Spin up a quiet HTTP server on a free port serving `directory`.
 
-    Remotion's renderer fetches `<Audio src=...>` and `<Img src=...>` via its
-    bundler dev server. The dev server only serves files inside `--public-dir`.
-    Absolute paths outside that root produce 404. So we make every asset path
-    relative to the public dir we'll pass on the CLI.
+    Remotion's renderer only fetches assets via http(s) URLs (file:// rejected,
+    --public-dir was unreliable in 4.0.x). A tiny stdlib HTTP server is the
+    most robust bridge: serve the run dir, pass http://localhost:<port>/<name>
+    paths in the spec, shut down on exit.
     """
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(directory))
+
+    # Silence the per-request log spam
+    handler.log_message = lambda *args, **kwargs: None  # type: ignore[method-assign]
+
+    # Bind to port 0 → OS picks a free one
+    with socketserver.TCPServer(("127.0.0.1", 0), handler) as httpd:
+        port = httpd.server_address[1]
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+        try:
+            yield f"http://127.0.0.1:{port}"
+        finally:
+            httpd.shutdown()
+
+
+def _to_url(p: Path | str | None, base_url: str, run_dir: Path) -> str | None:
+    """Convert a run-dir asset path into an HTTP URL served by the local server."""
     if p is None:
         return None
     p = Path(p)
     try:
-        return str(p.resolve().relative_to(public_dir.resolve()))
+        rel = p.resolve().relative_to(run_dir.resolve())
     except ValueError:
-        # Asset isn't under the public dir; return basename as a best-effort
-        # (caller is responsible for ensuring it ends up there).
-        return p.name
+        # Path isn't under the run dir; best-effort use its basename
+        rel = Path(p.name)
+    return f"{base_url}/{rel.as_posix()}"
 
 
-def build_video_spec(script: Script, media: MediaSet, composition_id: str, public_dir: Path | None = None) -> dict:
+def build_video_spec(
+    script: Script,
+    media: MediaSet,
+    composition_id: str,
+    base_url: str | None = None,
+    run_dir: Path | None = None,
+) -> dict:
     """Build the JSON contract Remotion consumes.
 
-    If `public_dir` is given, asset paths in the output are converted to be
-    relative to it (so Remotion's --public-dir serves them). Otherwise paths
-    are kept as-is — useful for unit tests.
+    If `base_url` + `run_dir` are given, asset paths are rewritten to HTTP URLs
+    served by a local helper. Without them paths stay as-is — useful for unit tests.
     """
     asset_by_beat = {a.beat_index: a for a in media.assets}
     windows = _compute_beat_windows(script.beats, media.narration_alignment)
     narration = media.narration_audio
+
+    def asset_url(p: Path | str | None) -> str | None:
+        if base_url and run_dir:
+            return _to_url(p, base_url, run_dir)
+        return str(p) if p else None
+
     return {
         "composition": composition_id,
         "title": script.title,
         "hook": script.hook,
         "cta": script.cta,
-        "narration_audio": (
-            _rel_to_public(narration, public_dir) if (public_dir and narration) else (str(narration) if narration else None)
-        ),
+        "narration_audio": asset_url(narration),
         "alignment": media.narration_alignment,
         "beats": [
             {
@@ -73,11 +107,7 @@ def build_video_spec(script: Script, media: MediaSet, composition_id: str, publi
                 "start_frame": windows[i]["start_frame"],
                 "end_frame": windows[i]["end_frame"],
                 "asset": {
-                    "path": (
-                        _rel_to_public(asset_by_beat[i].local_path, public_dir)
-                        if (public_dir and i in asset_by_beat)
-                        else (str(asset_by_beat[i].local_path) if i in asset_by_beat else None)
-                    ),
+                    "path": asset_url(asset_by_beat[i].local_path) if i in asset_by_beat else None,
                     "source": asset_by_beat[i].provider if i in asset_by_beat else None,
                 },
             }
@@ -89,52 +119,46 @@ def build_video_spec(script: Script, media: MediaSet, composition_id: str, publi
 def render_via_remotion(script: Script, media: MediaSet, out_path: Path, composition_id: str) -> Path:
     """Render the FactReel composition to MP4.
 
-    The run-output directory is used as Remotion's --public-dir so the
-    narration MP3 and beat assets (already living there) are served by the
-    bundler dev server. Spec paths are made relative to this dir.
+    Spins up a local HTTP server serving the run directory; rewrites all asset
+    paths in the spec to http URLs so Remotion's renderer can fetch them.
     """
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    public_dir = out_path.parent
+    run_dir = out_path.parent
     spec_path = out_path.with_suffix(".spec.json")
-    spec_path.write_text(json.dumps(build_video_spec(script, media, composition_id, public_dir=public_dir)))
 
-    cmd = [
-        "npx", "remotion", "render",
-        composition_id,
-        str(out_path),
-        "--props", str(spec_path),
-        "--config", "remotion.config.ts",
-        "--public-dir", str(public_dir),
-    ]
-    result = subprocess.run(cmd, cwd=REMOTION_DIR, capture_output=True, text=True)
+    with _serve_dir(run_dir) as base_url:
+        spec_path.write_text(json.dumps(build_video_spec(script, media, composition_id, base_url=base_url, run_dir=run_dir)))
+        cmd = [
+            "npx", "remotion", "render",
+            composition_id,
+            str(out_path),
+            "--props", str(spec_path),
+            "--config", "remotion.config.ts",
+        ]
+        result = subprocess.run(cmd, cwd=REMOTION_DIR, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"Remotion render failed: {result.stderr}")
     return out_path
 
 
 def render_still_via_remotion(composition_id: str, props: dict, out_path: Path) -> Path:
-    """Render a single PNG frame from a Remotion composition.
-
-    Used for thumbnails and story tiles. Same Remotion compositions, single-frame export.
-    """
+    """Render a single PNG frame (thumbnail or story tile) via local HTTP server."""
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    public_dir = out_path.parent
+    run_dir = out_path.parent
     spec_path = out_path.with_suffix(".props.json")
 
-    # Convert any absolute frame_path to relative-to-public-dir, mirroring render_via_remotion.
-    if isinstance(props.get("frame_path"), str):
-        props = {**props, "frame_path": _rel_to_public(props["frame_path"], public_dir)}
-    spec_path.write_text(json.dumps(props))
-
-    cmd = [
-        "npx", "remotion", "still",
-        composition_id,
-        str(out_path),
-        "--props", str(spec_path),
-        "--config", "remotion.config.ts",
-        "--public-dir", str(public_dir),
-    ]
-    result = subprocess.run(cmd, cwd=REMOTION_DIR, capture_output=True, text=True)
+    with _serve_dir(run_dir) as base_url:
+        if isinstance(props.get("frame_path"), str):
+            props = {**props, "frame_path": _to_url(props["frame_path"], base_url, run_dir)}
+        spec_path.write_text(json.dumps(props))
+        cmd = [
+            "npx", "remotion", "still",
+            composition_id,
+            str(out_path),
+            "--props", str(spec_path),
+            "--config", "remotion.config.ts",
+        ]
+        result = subprocess.run(cmd, cwd=REMOTION_DIR, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"Remotion still failed: {result.stderr}")
     return out_path

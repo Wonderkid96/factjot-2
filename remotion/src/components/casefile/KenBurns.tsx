@@ -9,8 +9,9 @@ interface KenBurnsProps {
   src: string;
   isVideo?: boolean;
   durationFrames?: number;
+  beatIndex?: number;
 }
 
-export function KenBurns({ src, isVideo = false, durationFrames }: KenBurnsProps) {
-  return <CinematicFrame src={src} isVideo={isVideo} grade="color" durationFrames={durationFrames} />;
+export function KenBurns({ src, isVideo = false, durationFrames, beatIndex }: KenBurnsProps) {
+  return <CinematicFrame src={src} isVideo={isVideo} grade="color" durationFrames={durationFrames} beatIndex={beatIndex} />;
 }

@@ -10,8 +10,9 @@ interface ArchiveFilmProps {
   src: string;
   isVideo?: boolean;
   durationFrames?: number;
+  beatIndex?: number;
 }
 
-export function ArchiveFilm({ src, isVideo = false, durationFrames }: ArchiveFilmProps) {
-  return <CinematicFrame src={src} isVideo={isVideo} grade="bw_grain" durationFrames={durationFrames} />;
+export function ArchiveFilm({ src, isVideo = false, durationFrames, beatIndex }: ArchiveFilmProps) {
+  return <CinematicFrame src={src} isVideo={isVideo} grade="bw_grain" durationFrames={durationFrames} beatIndex={beatIndex} />;
 }

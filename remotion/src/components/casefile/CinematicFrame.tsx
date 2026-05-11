@@ -25,7 +25,20 @@ interface CinematicFrameProps {
       ~15 frames, so the beat handoff cross-fades into the next scene instead
       of cutting. Falls back to 240 if not provided. */
   durationFrames?: number;
+  /** Beat index 0..N. Used to alternate the Ken Burns variant so consecutive
+      beats don't all zoom in the same way — beat 0 zooms in, beat 1 pans
+      left, beat 2 zooms out, beat 3 pans right (and cycles). */
+  beatIndex?: number;
 }
+
+type KenBurnsVariant =
+  | "zoom_in"     // scale 1.0 → 1.10, no pan
+  | "zoom_out"    // scale 1.10 → 1.0, no pan
+  | "pan_left"    // scale 1.06, translateX -40 → 0
+  | "pan_right"   // scale 1.06, translateX 40 → 0
+  | "pan_up";     // scale 1.06, translateY 30 → 0
+
+const KEN_BURNS_CYCLE: KenBurnsVariant[] = ["zoom_in", "pan_left", "zoom_out", "pan_right", "pan_up"];
 
 function gradeFilter(grade: CinematicGrade): string | undefined {
   switch (grade) {
@@ -39,6 +52,17 @@ function gradeFilter(grade: CinematicGrade): string | undefined {
 
 const FADE_OUT_FRAMES = 15;
 
+function kenBurnsMotion(variant: KenBurnsVariant, p: number): { scale: number; tx: number; ty: number } {
+  // p is 0..1 progress through the scene window.
+  switch (variant) {
+    case "zoom_in":   return { scale: 1.0 + 0.10 * p, tx: 0, ty: 0 };
+    case "zoom_out":  return { scale: 1.10 - 0.10 * p, tx: 0, ty: 0 };
+    case "pan_left":  return { scale: 1.06, tx: -40 * (1 - p), ty: 0 };  // start left, end centered
+    case "pan_right": return { scale: 1.06, tx:  40 * (1 - p), ty: 0 };
+    case "pan_up":    return { scale: 1.06, tx: 0, ty: -30 * (1 - p) };
+  }
+}
+
 export function CinematicFrame({
   src,
   isVideo = false,
@@ -46,12 +70,9 @@ export function CinematicFrame({
   overlay,
   staticFraming = false,
   durationFrames = 240,
+  beatIndex = 0,
 }: CinematicFrameProps) {
   const frame = useCurrentFrame();
-  // Fade IN over first 22 frames, fade OUT over last 15. The fade-out
-  // is what makes the beat-to-beat handoff a cross-fade rather than a
-  // hard cut: extending each beat's Sequence to overlap the next by
-  // FADE_OUT_FRAMES means both scenes render together during the blend.
   const fadeIn = interpolate(frame, [0, 22], [0, 1], {
     extrapolateRight: "clamp",
     easing: Easing.out(Easing.cubic),
@@ -63,19 +84,25 @@ export function CinematicFrame({
     { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: Easing.in(Easing.cubic) },
   );
   const opacity = Math.min(fadeIn, fadeOut);
-  const scale = staticFraming
-    ? 1.0
-    : interpolate(frame, [0, 240], [1.0, 1.06], {
-        extrapolateRight: "clamp",
-        easing: Easing.linear,
-      });
+
+  // Ken Burns — variant cycles per beat so consecutive scenes don't all
+  // zoom in the same direction. Progress runs across the scene's full
+  // visible window (NOT a fixed 240 frames) so the motion lands.
+  const variant: KenBurnsVariant = staticFraming
+    ? "zoom_in"
+    : KEN_BURNS_CYCLE[beatIndex % KEN_BURNS_CYCLE.length];
+  const progress = interpolate(frame, [0, durationFrames], [0, 1], {
+    extrapolateRight: "clamp",
+    easing: Easing.linear,
+  });
+  const motion = staticFraming ? { scale: 1, tx: 0, ty: 0 } : kenBurnsMotion(variant, progress);
   const filter = gradeFilter(grade);
 
   const assetStyle: React.CSSProperties = {
     width: "100%",
     height: "100%",
     objectFit: "cover",
-    transform: `scale(${scale})`,
+    transform: `translate(${motion.tx}px, ${motion.ty}px) scale(${motion.scale})`,
     transformOrigin: "center center",
     ...(filter ? { filter } : {}),
   };

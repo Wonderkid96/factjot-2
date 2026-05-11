@@ -10,9 +10,10 @@ interface MapPinProps {
   /** Location name to surface in the lower-third. */
   locationLabel?: string;
   durationFrames?: number;
+  beatIndex?: number;
 }
 
-export function MapPin({ src, isVideo = false, locationLabel, durationFrames }: MapPinProps) {
+export function MapPin({ src, isVideo = false, locationLabel, durationFrames, beatIndex }: MapPinProps) {
   return (
     <LowerThird
       src={src}
@@ -20,6 +21,7 @@ export function MapPin({ src, isVideo = false, locationLabel, durationFrames }: 
       eyebrow="Location"
       label={locationLabel ?? "Unknown"}
       durationFrames={durationFrames}
+      beatIndex={beatIndex}
     />
   );
 }

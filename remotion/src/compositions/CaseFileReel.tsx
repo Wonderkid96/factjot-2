@@ -2,7 +2,7 @@ import React from "react";
 import { z } from "zod";
 import {
   AbsoluteFill, Sequence, useVideoConfig, useCurrentFrame,
-  interpolate, spring, Easing, Audio, OffthreadVideo, Loop,
+  interpolate, spring, Easing, Audio, OffthreadVideo, Loop, Img,
 } from "remotion";
 import { Wordmark } from "../components/Wordmark";
 import { YearAccent } from "../components/YearAccent";
@@ -139,6 +139,50 @@ function ChunkCaption({ text }: { text: string }) {
 
 // ---------- Hook + CTA (slightly lighter than FactReel — case-file is editorial, not loud) ----------
 
+// HeroAsset — beat 0's asset rendered behind the title hold. Renders at
+// reduced brightness + slight blur so the title remains the dominant
+// element while still teasing the asset to come. Ken Burns starts here
+// so the asset is already in motion when the title fades.
+function HeroAsset({ src, isVideo, holdFrames }: { src: string; isVideo: boolean; holdFrames: number }) {
+  const frame = useCurrentFrame();
+  const fadeIn = interpolate(frame, [0, 24], [0, 0.55], {
+    extrapolateRight: "clamp",
+    easing: Easing.out(Easing.cubic),
+  });
+  // Slow zoom across the hold so the hero feels alive even though it's
+  // muted in brightness/blur.
+  const scale = interpolate(frame, [0, holdFrames], [1.04, 1.0], {
+    extrapolateRight: "clamp",
+    easing: Easing.linear,
+  });
+  return (
+    <AbsoluteFill style={{ opacity: fadeIn }}>
+      {isVideo ? (
+        <OffthreadVideo src={src} style={{
+          width: "100%", height: "100%", objectFit: "cover",
+          transform: `scale(${scale})`,
+          transformOrigin: "center center",
+          filter: "blur(2px) brightness(0.55)",
+        }} />
+      ) : (
+        // eslint-disable-next-line jsx-a11y/alt-text
+        <Img src={src} style={{
+          width: "100%", height: "100%", objectFit: "cover",
+          transform: `scale(${scale})`,
+          transformOrigin: "center center",
+          filter: "blur(2px) brightness(0.55)",
+        }} />
+      )}
+      {/* Bottom gradient so the title's drop shadow has somewhere to land */}
+      <AbsoluteFill style={{
+        background: "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.55) 100%)",
+        pointerEvents: "none",
+      }} />
+    </AbsoluteFill>
+  );
+}
+
+
 function Hook({ text }: { text: string }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -156,14 +200,19 @@ function Hook({ text }: { text: string }) {
       <h1 style={{
         color: palette.off_white,
         fontFamily: "Archivo Black",
-        fontSize: 80,
-        lineHeight: 1.05,
+        fontSize: 92,
+        lineHeight: 1.02,
         textAlign: "center",
         padding: "0 70px",
         textTransform: "lowercase",
-        letterSpacing: "-0.01em",
+        letterSpacing: "-0.015em",
         margin: 0,
-        textShadow: "0 6px 24px rgba(0,0,0,0.7)",
+        // Hard drop shadow stack — block offset behind the letters (like V1)
+        // PLUS a soft outer glow so the title reads on any hero asset.
+        textShadow: [
+          "6px 6px 0 rgba(0,0,0,0.95)",
+          "0 12px 32px rgba(0,0,0,0.8)",
+        ].join(", "),
         transform: `scale(${scale})`,
         opacity,
       }}>
@@ -323,7 +372,7 @@ function AmbientLayer({ src, durationInFrames }: { src?: string | null; duration
 // ---------- Composition ----------
 
 export const CaseFileReel: React.FC<z.infer<typeof caseFileReelSchema>> = ({
-  hook, cta, narration_audio, music_audio, grit_overlay, ambient_overlay, beats, intro_overlay,
+  title, hook, cta, narration_audio, music_audio, grit_overlay, ambient_overlay, beats, intro_overlay,
   hook_window, cta_window, outro_window,
   narration_offset_frames, kicker,
 }) => {
@@ -365,9 +414,26 @@ export const CaseFileReel: React.FC<z.infer<typeof caseFileReelSchema>> = ({
         <Audio src={music_audio} volume={musicVolume} loop />
       )}
 
-      {/* Hook — sits over the desk during the title hold */}
+      {/* Hero asset — beat 0's image/video plays Ken Burns from frame 0
+          UNDERNEATH the title hold. The title animates on top with a fade
+          so it "reveals" against the scene rather than against pure black.
+          The intro overlay (factjot brand wipe) still plays on top for the
+          first ~1.4s. */}
+      {beats[0]?.asset?.path && (
+        <Sequence from={0} durationInFrames={Math.max(beats[0].start_frame, 1)}>
+          <HeroAsset
+            src={beats[0].asset.path}
+            isVideo={isVideoUrl(beats[0].asset.path)}
+            holdFrames={Math.max(beats[0].start_frame, 1)}
+          />
+        </Sequence>
+      )}
+
+      {/* Hook — the spec's `title` (more declarative, image-able) is rendered
+          on screen here while the narration speaks the `hook` line. Keeps the
+          visual punch separate from the spoken opener. */}
       <Sequence from={0} durationInFrames={Math.max(hookEnd, 1)}>
-        <Hook text={hook} />
+        <Hook text={title || hook} />
       </Sequence>
 
       {/* Per-beat scenes — each beat's Sequence extends BEAT_OVERLAP_FRAMES
@@ -397,6 +463,7 @@ export const CaseFileReel: React.FC<z.infer<typeof caseFileReelSchema>> = ({
               isVideo={isVideo}
               beatText={beat.text}
               durationFrames={duration}
+              beatIndex={i}
               priorSrc={priorSrc}
               priorIsVideo={priorIsVideo}
             />

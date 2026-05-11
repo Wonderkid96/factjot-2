@@ -18,9 +18,10 @@ interface StampRevealProps {
       doesn't clash with the factjot wordmark. */
   holdFrames?: number;
   durationFrames?: number;
+  beatIndex?: number;
 }
 
-export function StampReveal({ src, isVideo = false, text, delay = 18, holdFrames = 90, durationFrames }: StampRevealProps) {
+export function StampReveal({ src, isVideo = false, text, delay = 18, holdFrames = 90, durationFrames, beatIndex }: StampRevealProps) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -49,6 +50,7 @@ export function StampReveal({ src, isVideo = false, text, delay = 18, holdFrames
       isVideo={isVideo}
       grade="color"
       durationFrames={durationFrames}
+      beatIndex={beatIndex}
       overlay={
         <AbsoluteFill style={{
           display: "flex",

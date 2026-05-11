@@ -111,7 +111,16 @@ Each beat carries a `scene_treatment` from a CLOSED set. You are the art directo
 
 - `evidence_slide` — full-bleed asset with WARM SEPIA grade. Use for archival material (letters, paintings, scans, manuscripts) where you want a "this is old" feel.
 
-- `redacted_doc` — bold typed paragraph on pure black. Selected words get inverter-matte redaction blocks that sweep in left-to-right (the words flip to black, the block reads as a redaction stamp). Use for secrecy, cover-up, hidden info, declassified material, things-that-should-not-be-known beats.
+- `redacted_doc` — bold typed paragraph on pure black. Selected words get inverter-matte redaction blocks that sweep in left-to-right (the words flip to black, the block reads as a redaction stamp). Use ONLY when the beat is about active CONCEALMENT — censorship, classified documents, sealed records, deliberately hidden information, cover-ups.
+
+  **CRITICAL: unsolved ≠ secret.** A scientific mystery, an unexplained phenomenon, or an open historical question is NOT a redaction beat. Use `ken_burns` or `index_card` for those.
+
+  - GOOD: "The CIA destroyed every copy of the report in 1973." (active destruction)
+  - GOOD: "The pope's letter has been sealed in the Vatican archives for 200 years." (literal concealment)
+  - GOOD: "Three witnesses signed NDAs and never spoke publicly again." (enforced silence)
+  - BAD: "Scientists still can't explain why birds flee women." (mystery, NOT concealment — use `ken_burns`)
+  - BAD: "The murder remains unsolved decades later." (open case, NOT cover-up — use `newsprint_clip`)
+  - BAD: "Nobody knows what really started the fire." (unknown ≠ hidden — use `ken_burns`)
 
 - `stamp_reveal` — full-bleed asset with a big bold text plate that rises up from the bottom and holds. ONLY use this when the beat contains a 4-digit year (e.g. "2009", "1968") or a punchy number — the renderer extracts a year/number for the plate. If your beat has no extractable year/number, DO NOT pick stamp_reveal.
 

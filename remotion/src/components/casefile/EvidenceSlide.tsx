@@ -9,8 +9,9 @@ interface EvidenceSlideProps {
   src: string;
   isVideo?: boolean;
   durationFrames?: number;
+  beatIndex?: number;
 }
 
-export function EvidenceSlide({ src, isVideo = false, durationFrames }: EvidenceSlideProps) {
-  return <CinematicFrame src={src} isVideo={isVideo} grade="sepia" durationFrames={durationFrames} />;
+export function EvidenceSlide({ src, isVideo = false, durationFrames, beatIndex }: EvidenceSlideProps) {
+  return <CinematicFrame src={src} isVideo={isVideo} grade="sepia" durationFrames={durationFrames} beatIndex={beatIndex} />;
 }

@@ -16,6 +16,7 @@ interface LowerThirdProps {
   eyebrow?: string;
   grade?: CinematicGrade;
   durationFrames?: number;
+  beatIndex?: number;
 }
 
 export function LowerThird({
@@ -25,6 +26,7 @@ export function LowerThird({
   eyebrow,
   grade = "color",
   durationFrames,
+  beatIndex,
 }: LowerThirdProps) {
   const frame = useCurrentFrame();
   // Label entry: starts ~14 frames after the asset's fade-in completes.
@@ -43,6 +45,7 @@ export function LowerThird({
       isVideo={isVideo}
       grade={grade}
       durationFrames={durationFrames}
+      beatIndex={beatIndex}
       overlay={
         <AbsoluteFill style={{ pointerEvents: "none" }}>
           <div style={{

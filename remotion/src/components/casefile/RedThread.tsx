@@ -14,8 +14,9 @@ interface RedThreadProps {
   priorSrc?: string | null;
   priorIsVideo?: boolean;
   durationFrames?: number;
+  beatIndex?: number;
 }
 
-export function RedThread({ src, isVideo = false, durationFrames }: RedThreadProps) {
-  return <CinematicFrame src={src} isVideo={isVideo} grade="color" durationFrames={durationFrames} />;
+export function RedThread({ src, isVideo = false, durationFrames, beatIndex }: RedThreadProps) {
+  return <CinematicFrame src={src} isVideo={isVideo} grade="color" durationFrames={durationFrames} beatIndex={beatIndex} />;
 }

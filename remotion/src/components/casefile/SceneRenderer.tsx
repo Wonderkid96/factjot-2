@@ -34,6 +34,9 @@ interface SceneRendererProps {
   isVideo: boolean;
   beatText: string;
   durationFrames: number;
+  /** Beat index — drives Ken Burns variant cycling so consecutive beats
+      pan/zoom in different directions. */
+  beatIndex?: number;
   /** Prior beat's asset — needed for red_thread. */
   priorSrc?: string | null;
   priorIsVideo?: boolean;
@@ -49,6 +52,7 @@ export function SceneRenderer({
   isVideo,
   beatText,
   durationFrames,
+  beatIndex = 0,
   priorSrc,
   priorIsVideo,
   stampText,
@@ -64,26 +68,27 @@ export function SceneRenderer({
   // fade out cleanly in its last 15 frames — that fade-out is half of
   // the beat-to-beat cross-fade we want.
   const d = durationFrames;
+  const bi = beatIndex;
   switch (treatment) {
     case "polaroid":
-      return <Polaroid src={src} isVideo={isVideo} durationFrames={d} />;
+      return <Polaroid src={src} isVideo={isVideo} durationFrames={d} beatIndex={bi} />;
     case "evidence_slide":
-      return <EvidenceSlide src={src} isVideo={isVideo} durationFrames={d} />;
+      return <EvidenceSlide src={src} isVideo={isVideo} durationFrames={d} beatIndex={bi} />;
     case "redacted_doc":
       return <RedactedDoc text={beatText} />;
     case "stamp_reveal": {
       const derived = stampText ?? deriveStampText(beatText);
       if (!derived) {
-        return <Polaroid src={src} isVideo={isVideo} durationFrames={d} />;
+        return <Polaroid src={src} isVideo={isVideo} durationFrames={d} beatIndex={bi} />;
       }
-      return <StampReveal src={src} isVideo={isVideo} text={derived} durationFrames={d} />;
+      return <StampReveal src={src} isVideo={isVideo} text={derived} durationFrames={d} beatIndex={bi} />;
     }
     case "index_card":
       return <IndexCard text={beatText} />;
     case "newsprint_clip":
-      return <NewsprintClip src={src} isVideo={isVideo} headline={deriveHeadline(beatText)} durationFrames={d} />;
+      return <NewsprintClip src={src} isVideo={isVideo} headline={deriveHeadline(beatText)} durationFrames={d} beatIndex={bi} />;
     case "archive_film":
-      return <ArchiveFilm src={src} isVideo={isVideo} durationFrames={d} />;
+      return <ArchiveFilm src={src} isVideo={isVideo} durationFrames={d} beatIndex={bi} />;
     case "map_pin":
       return (
         <MapPin
@@ -91,11 +96,12 @@ export function SceneRenderer({
           isVideo={isVideo}
           locationLabel={locationLabel ?? deriveLocationLabel(beatText)}
           durationFrames={d}
+          beatIndex={bi}
         />
       );
     case "red_thread":
       if (!priorSrc) {
-        return <Polaroid src={src} isVideo={isVideo} durationFrames={d} />;
+        return <Polaroid src={src} isVideo={isVideo} durationFrames={d} beatIndex={bi} />;
       }
       return (
         <RedThread
@@ -104,11 +110,12 @@ export function SceneRenderer({
           priorSrc={priorSrc}
           priorIsVideo={priorIsVideo ?? false}
           durationFrames={d}
+          beatIndex={bi}
         />
       );
     case "ken_burns":
     default:
-      return <KenBurns src={src} isVideo={isVideo} durationFrames={d} />;
+      return <KenBurns src={src} isVideo={isVideo} durationFrames={d} beatIndex={bi} />;
   }
 }
 

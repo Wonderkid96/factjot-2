@@ -9,8 +9,9 @@ interface PolaroidProps {
   src: string;
   isVideo?: boolean;
   durationFrames?: number;
+  beatIndex?: number;
 }
 
-export function Polaroid({ src, isVideo = false, durationFrames }: PolaroidProps) {
-  return <CinematicFrame src={src} isVideo={isVideo} grade="color" durationFrames={durationFrames} />;
+export function Polaroid({ src, isVideo = false, durationFrames, beatIndex }: PolaroidProps) {
+  return <CinematicFrame src={src} isVideo={isVideo} grade="color" durationFrames={durationFrames} beatIndex={beatIndex} />;
 }

@@ -139,6 +139,43 @@ def test_orchestrator_returns_none_when_pool_empty():
     assert result is None
 
 
+def test_orchestrator_video_preference_beats_high_res_wikimedia_still():
+    """When preferred_source='video', a Pexels video must outrank a Wikimedia
+    still even if the still has a higher provider tier and higher resolution.
+    Regression guard: the previous scoring used +2 for type-match which was
+    swallowed by the +3 Wikimedia tier gap, so videos silently lost.
+    """
+    vb = VisualBrief(subject="ocean", queries=["ocean waves"], preferred_source="video")
+    wm_image = _wm("https://wm/big.jpg", w=4000, h=6000)   # tier 6 + max res
+    pex_video = _pex("https://pex/wave.mp4", w=1920, h=1080)  # tier 3 + 1080p
+    with patch("src.services.sourcing.orchestrator.traverse_category", return_value=[]), \
+         patch("src.services.sourcing.orchestrator.search_commons", return_value=[wm_image]), \
+         patch("src.services.sourcing.orchestrator.search_pexels_videos", return_value=[pex_video]), \
+         patch("src.services.sourcing.orchestrator.search_pixabay_videos", return_value=[]), \
+         patch("src.services.sourcing.orchestrator.check_image_subject", return_value=True):
+        result = source_for_beat(vb)
+    assert result is not None
+    assert result.provider == "pexels", "video preference must win when LLM asks for video"
+    assert result.media_type == "video"
+
+
+def test_orchestrator_image_preference_still_picks_wikimedia():
+    """Inverse of the above — when preferred_source='image', the Wikimedia
+    still must win even with a Pexels video also in the pool."""
+    vb = VisualBrief(subject="JFK", queries=["jfk"], preferred_source="image")
+    wm_image = _wm("https://wm/jfk.jpg", w=2000, h=3000)
+    pex_video = _pex("https://pex/clip.mp4", w=3840, h=2160)  # higher res but wrong type
+    with patch("src.services.sourcing.orchestrator.traverse_category", return_value=[]), \
+         patch("src.services.sourcing.orchestrator.search_commons", return_value=[wm_image]), \
+         patch("src.services.sourcing.orchestrator.search_pexels_videos", return_value=[pex_video]), \
+         patch("src.services.sourcing.orchestrator.search_pixabay_videos", return_value=[]), \
+         patch("src.services.sourcing.orchestrator.check_image_subject", return_value=True):
+        result = source_for_beat(vb)
+    assert result is not None
+    assert result.provider == "wikimedia"
+    assert result.media_type == "image"
+
+
 def test_orchestrator_tolerates_provider_failure():
     """One provider raising an exception must not kill the pool — the rest continue."""
     vb = VisualBrief(subject="x", queries=["x"], preferred_source="video")

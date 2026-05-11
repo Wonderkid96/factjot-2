@@ -69,7 +69,13 @@ def _score(asset: SourcedAsset, brief: VisualBrief) -> int:
     Components:
     - provider tier (Wikimedia > Pexels > Pixabay)
     - resolution bonus (≥2000px gets +2, ≥1500px gets +1)
-    - media-type match with preferred_source (+2 if matches)
+    - media-type match with preferred_source (+6 if matches)
+
+    The +6 type-match bonus is deliberately large enough to overcome BOTH the
+    Wikimedia provider tier gap (3) AND the max resolution bonus (2). Otherwise
+    a high-res Wikimedia still (tier 6 + res 2 = 8) would beat a Pexels video
+    (tier 3 + res 2 + match 2 = 7) on every kinetic beat — silently turning
+    every "preferred_source: video" request into a still slideshow.
     """
     score = PROVIDER_SCORE.get(asset.provider, 0)
     longest = max(asset.width, asset.height)
@@ -78,7 +84,7 @@ def _score(asset: SourcedAsset, brief: VisualBrief) -> int:
     elif longest >= 1500:
         score += 1
     if (brief.preferred_source == "video") == (asset.media_type == "video"):
-        score += 2
+        score += 6
     return score
 
 

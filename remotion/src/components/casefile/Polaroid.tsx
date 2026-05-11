@@ -25,7 +25,10 @@ export function Polaroid({
   isVideo = false,
   finalRotation = -4,
   offsetX = -20,
-  offsetY = -80,
+  // Sit the polaroid above centre so it never collides with the bottom-row
+  // caption (at y≈1500) and there's clean breathing room with the chrome at
+  // y≈100. Negative = up from centre.
+  offsetY = -180,
   aspect = 4 / 5,
 }: PolaroidProps) {
   const settle = useSettleSpring(0);

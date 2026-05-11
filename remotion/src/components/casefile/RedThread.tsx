@@ -13,8 +13,9 @@ interface RedThreadProps {
   /** Unused now — kept so SceneRenderer call sites don't have to change. */
   priorSrc?: string | null;
   priorIsVideo?: boolean;
+  durationFrames?: number;
 }
 
-export function RedThread({ src, isVideo = false }: RedThreadProps) {
-  return <CinematicFrame src={src} isVideo={isVideo} grade="color" />;
+export function RedThread({ src, isVideo = false, durationFrames }: RedThreadProps) {
+  return <CinematicFrame src={src} isVideo={isVideo} grade="color" durationFrames={durationFrames} />;
 }

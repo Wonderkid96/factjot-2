@@ -21,6 +21,10 @@ interface CinematicFrameProps {
   overlay?: React.ReactNode;
   /** Skip the slow Ken Burns scale-in if the asset is already in motion. */
   staticFraming?: boolean;
+  /** Total frames this scene plays for. Enables a clean fade-out in the last
+      ~15 frames, so the beat handoff cross-fades into the next scene instead
+      of cutting. Falls back to 240 if not provided. */
+  durationFrames?: number;
 }
 
 function gradeFilter(grade: CinematicGrade): string | undefined {
@@ -33,18 +37,32 @@ function gradeFilter(grade: CinematicGrade): string | undefined {
   }
 }
 
+const FADE_OUT_FRAMES = 15;
+
 export function CinematicFrame({
   src,
   isVideo = false,
   grade = "color",
   overlay,
   staticFraming = false,
+  durationFrames = 240,
 }: CinematicFrameProps) {
   const frame = useCurrentFrame();
-  const opacity = interpolate(frame, [0, 22], [0, 1], {
+  // Fade IN over first 22 frames, fade OUT over last 15. The fade-out
+  // is what makes the beat-to-beat handoff a cross-fade rather than a
+  // hard cut: extending each beat's Sequence to overlap the next by
+  // FADE_OUT_FRAMES means both scenes render together during the blend.
+  const fadeIn = interpolate(frame, [0, 22], [0, 1], {
     extrapolateRight: "clamp",
     easing: Easing.out(Easing.cubic),
   });
+  const fadeOut = interpolate(
+    frame,
+    [durationFrames - FADE_OUT_FRAMES, durationFrames],
+    [1, 0],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: Easing.in(Easing.cubic) },
+  );
+  const opacity = Math.min(fadeIn, fadeOut);
   const scale = staticFraming
     ? 1.0
     : interpolate(frame, [0, 240], [1.0, 1.06], {

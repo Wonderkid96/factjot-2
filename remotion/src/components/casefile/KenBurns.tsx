@@ -8,10 +8,9 @@ import { CinematicFrame } from "./CinematicFrame";
 interface KenBurnsProps {
   src: string;
   isVideo?: boolean;
-  /** Kept for back-compat; CinematicFrame derives the zoom internally. */
   durationFrames?: number;
 }
 
-export function KenBurns({ src, isVideo = false }: KenBurnsProps) {
-  return <CinematicFrame src={src} isVideo={isVideo} grade="color" />;
+export function KenBurns({ src, isVideo = false, durationFrames }: KenBurnsProps) {
+  return <CinematicFrame src={src} isVideo={isVideo} grade="color" durationFrames={durationFrames} />;
 }

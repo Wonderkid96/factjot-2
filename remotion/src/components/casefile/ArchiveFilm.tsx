@@ -9,8 +9,9 @@ import { CinematicFrame } from "./CinematicFrame";
 interface ArchiveFilmProps {
   src: string;
   isVideo?: boolean;
+  durationFrames?: number;
 }
 
-export function ArchiveFilm({ src, isVideo = false }: ArchiveFilmProps) {
-  return <CinematicFrame src={src} isVideo={isVideo} grade="bw_grain" />;
+export function ArchiveFilm({ src, isVideo = false, durationFrames }: ArchiveFilmProps) {
+  return <CinematicFrame src={src} isVideo={isVideo} grade="bw_grain" durationFrames={durationFrames} />;
 }

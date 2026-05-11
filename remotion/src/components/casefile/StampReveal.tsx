@@ -17,9 +17,10 @@ interface StampRevealProps {
       it fades out, so when the beat is extended through the outro the plate
       doesn't clash with the factjot wordmark. */
   holdFrames?: number;
+  durationFrames?: number;
 }
 
-export function StampReveal({ src, isVideo = false, text, delay = 18, holdFrames = 90 }: StampRevealProps) {
+export function StampReveal({ src, isVideo = false, text, delay = 18, holdFrames = 90, durationFrames }: StampRevealProps) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -47,6 +48,7 @@ export function StampReveal({ src, isVideo = false, text, delay = 18, holdFrames
       src={src}
       isVideo={isVideo}
       grade="color"
+      durationFrames={durationFrames}
       overlay={
         <AbsoluteFill style={{
           display: "flex",

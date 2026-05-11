@@ -8,8 +8,9 @@ import { CinematicFrame } from "./CinematicFrame";
 interface EvidenceSlideProps {
   src: string;
   isVideo?: boolean;
+  durationFrames?: number;
 }
 
-export function EvidenceSlide({ src, isVideo = false }: EvidenceSlideProps) {
-  return <CinematicFrame src={src} isVideo={isVideo} grade="sepia" />;
+export function EvidenceSlide({ src, isVideo = false, durationFrames }: EvidenceSlideProps) {
+  return <CinematicFrame src={src} isVideo={isVideo} grade="sepia" durationFrames={durationFrames} />;
 }

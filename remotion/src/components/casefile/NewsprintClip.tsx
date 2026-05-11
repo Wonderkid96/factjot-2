@@ -10,8 +10,9 @@ interface NewsprintClipProps {
   isVideo?: boolean;
   /** Unused now — kept so SceneRenderer call sites don't have to change. */
   headline?: string;
+  durationFrames?: number;
 }
 
-export function NewsprintClip({ src, isVideo = false }: NewsprintClipProps) {
-  return <CinematicFrame src={src} isVideo={isVideo} grade="halftone" />;
+export function NewsprintClip({ src, isVideo = false, durationFrames }: NewsprintClipProps) {
+  return <CinematicFrame src={src} isVideo={isVideo} grade="halftone" durationFrames={durationFrames} />;
 }

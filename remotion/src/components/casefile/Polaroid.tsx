@@ -8,8 +8,9 @@ import { CinematicFrame } from "./CinematicFrame";
 interface PolaroidProps {
   src: string;
   isVideo?: boolean;
+  durationFrames?: number;
 }
 
-export function Polaroid({ src, isVideo = false }: PolaroidProps) {
-  return <CinematicFrame src={src} isVideo={isVideo} grade="color" />;
+export function Polaroid({ src, isVideo = false, durationFrames }: PolaroidProps) {
+  return <CinematicFrame src={src} isVideo={isVideo} grade="color" durationFrames={durationFrames} />;
 }

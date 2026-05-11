@@ -9,15 +9,17 @@ interface MapPinProps {
   isVideo?: boolean;
   /** Location name to surface in the lower-third. */
   locationLabel?: string;
+  durationFrames?: number;
 }
 
-export function MapPin({ src, isVideo = false, locationLabel }: MapPinProps) {
+export function MapPin({ src, isVideo = false, locationLabel, durationFrames }: MapPinProps) {
   return (
     <LowerThird
       src={src}
       isVideo={isVideo}
       eyebrow="Location"
       label={locationLabel ?? "Unknown"}
+      durationFrames={durationFrames}
     />
   );
 }

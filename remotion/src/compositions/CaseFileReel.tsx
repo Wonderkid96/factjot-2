@@ -96,10 +96,23 @@ function isVideoUrl(p: string | null): boolean {
 // ---------- Caption (TikTok-style bold block) ----------
 
 // TikTok caption convention: bottom-anchored, large bold sans, heavy stroke
-// AND drop-shadow so the text reads on any background. Designed to sit in
-// the bottom third while the centre of the frame stays clear for scenes
-// and animation overlays.
+// AND drop-shadow so the text reads on any background. Each chunk does a
+// 4-frame fade-in + a 1-2px upward translate so the swap reads as a soft
+// pop rather than a hard cut. Chunks are already chain-extended upstream
+// (in render.remotion.py), so there's no gap between consecutive chunks —
+// only the entry animation is local.
 function ChunkCaption({ text }: { text: string }) {
+  const frame = useCurrentFrame();
+  const opacity = interpolate(frame, [0, 4], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+    easing: Easing.out(Easing.cubic),
+  });
+  const tx = interpolate(frame, [0, 6], [6, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+    easing: Easing.out(Easing.cubic),
+  });
   return (
     <p style={{
       color: "#FFFFFF",
@@ -116,6 +129,8 @@ function ChunkCaption({ text }: { text: string }) {
       WebkitTextStroke: "4px #000000",
       paintOrder: "stroke fill",
       textShadow: "0 6px 18px rgba(0,0,0,0.85)",
+      opacity,
+      transform: `translateY(${tx}px)`,
     }}>
       {text}
     </p>
@@ -355,17 +370,20 @@ export const CaseFileReel: React.FC<z.infer<typeof caseFileReelSchema>> = ({
         <Hook text={hook} />
       </Sequence>
 
-      {/* Per-beat scenes — each beat shows for its own window only. Prior
-          beats DO NOT persist as faded layers; they're surfaced via the
-          corner EvidenceStack below at full opacity. */}
+      {/* Per-beat scenes — each beat's Sequence extends BEAT_OVERLAP_FRAMES
+          past its end so it cross-fades into the next beat's fade-in. The
+          15-frame fade-out lives inside CinematicFrame's opacity envelope. */}
       {beats.map((beat, i) => {
+        const BEAT_OVERLAP_FRAMES = 15;
         const path = beat.asset?.path ?? null;
         const isVideo = isVideoUrl(path);
         const isLast = i === beats.length - 1;
         const naturalDuration = Math.max(beat.end_frame - beat.start_frame, fps);
         // Last beat extends through CTA + outro so we don't cut to bare desk.
         const extendedEnd = isLast ? Math.max(outroEnd, beat.end_frame) : beat.end_frame;
-        const duration = Math.max(extendedEnd - beat.start_frame, naturalDuration);
+        // Add overlap so the next beat is rendered on top during this beat's
+        // last 15 frames — both scenes alpha-blend during the handoff.
+        const duration = Math.max(extendedEnd - beat.start_frame, naturalDuration) + BEAT_OVERLAP_FRAMES;
 
         const priorBeat = i > 0 ? beats[i - 1] : null;
         const priorSrc = priorBeat?.asset?.path ?? null;

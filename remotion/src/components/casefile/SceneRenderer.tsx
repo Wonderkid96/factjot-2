@@ -60,42 +60,42 @@ export function SceneRenderer({
     return <IndexCard text={beatText} />;
   }
 
+  // Forward durationFrames to every visual scene so CinematicFrame can
+  // fade out cleanly in its last 15 frames — that fade-out is half of
+  // the beat-to-beat cross-fade we want.
+  const d = durationFrames;
   switch (treatment) {
     case "polaroid":
-      return <Polaroid src={src} isVideo={isVideo} />;
+      return <Polaroid src={src} isVideo={isVideo} durationFrames={d} />;
     case "evidence_slide":
-      return <EvidenceSlide src={src} isVideo={isVideo} />;
+      return <EvidenceSlide src={src} isVideo={isVideo} durationFrames={d} />;
     case "redacted_doc":
       return <RedactedDoc text={beatText} />;
     case "stamp_reveal": {
-      // Only render the text plate when we can extract something meaningful
-      // (a 4-digit year or a 3+ digit number from the beat). Falling back to
-      // generic "FILED" / "CONFIRMED" strings produced random-looking labels
-      // across runs and the agent had no way to know what would land — better
-      // to suppress the plate entirely and let the asset carry the beat.
       const derived = stampText ?? deriveStampText(beatText);
       if (!derived) {
-        return <Polaroid src={src} isVideo={isVideo} />;
+        return <Polaroid src={src} isVideo={isVideo} durationFrames={d} />;
       }
-      return <StampReveal src={src} isVideo={isVideo} text={derived} />;
+      return <StampReveal src={src} isVideo={isVideo} text={derived} durationFrames={d} />;
     }
     case "index_card":
       return <IndexCard text={beatText} />;
     case "newsprint_clip":
-      return <NewsprintClip src={src} isVideo={isVideo} headline={deriveHeadline(beatText)} />;
+      return <NewsprintClip src={src} isVideo={isVideo} headline={deriveHeadline(beatText)} durationFrames={d} />;
     case "archive_film":
-      return <ArchiveFilm src={src} isVideo={isVideo} />;
+      return <ArchiveFilm src={src} isVideo={isVideo} durationFrames={d} />;
     case "map_pin":
       return (
         <MapPin
           src={src}
           isVideo={isVideo}
           locationLabel={locationLabel ?? deriveLocationLabel(beatText)}
+          durationFrames={d}
         />
       );
     case "red_thread":
       if (!priorSrc) {
-        return <Polaroid src={src} isVideo={isVideo} />;
+        return <Polaroid src={src} isVideo={isVideo} durationFrames={d} />;
       }
       return (
         <RedThread
@@ -103,11 +103,12 @@ export function SceneRenderer({
           isVideo={isVideo}
           priorSrc={priorSrc}
           priorIsVideo={priorIsVideo ?? false}
+          durationFrames={d}
         />
       );
     case "ken_burns":
     default:
-      return <KenBurns src={src} isVideo={isVideo} durationFrames={durationFrames} />;
+      return <KenBurns src={src} isVideo={isVideo} durationFrames={d} />;
   }
 }
 

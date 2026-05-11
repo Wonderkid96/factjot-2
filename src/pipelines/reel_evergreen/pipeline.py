@@ -45,7 +45,7 @@ class ReelEvergreenPipeline(Pipeline):
     output_format = "reel"
     target_platforms = [Platform.INSTAGRAM, Platform.YOUTUBE_SHORTS]
     brand_format = "reel_overlay"
-    remotion_composition = "FactReel"
+    remotion_composition = "CaseFileReel"
 
     def __init__(self) -> None:
         self.run_id: str | None = None

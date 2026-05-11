@@ -368,6 +368,10 @@ def build_video_spec(
                 "start_frame": beat_data[i]["start_frame"],
                 "end_frame": beat_data[i]["end_frame"],
                 "chunks": beat_data[i]["chunks"],
+                # CaseFileReel uses scene_treatment to pick which case-file scene
+                # component renders this beat (polaroid, evidence_slide, etc.).
+                # FactReel ignores the field — it renders every beat the same way.
+                "scene_treatment": getattr(b, "scene_treatment", "ken_burns"),
                 "asset": {
                     "path": asset_url(asset_by_beat[i].local_path) if i in asset_by_beat else None,
                     "source": asset_by_beat[i].provider if i in asset_by_beat else None,

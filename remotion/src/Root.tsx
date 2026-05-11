@@ -1,6 +1,7 @@
 import React from "react";
 import { Composition } from "remotion";
 import { FactReel, factReelSchema } from "./compositions/FactReel";
+import { CaseFileReel, caseFileReelSchema } from "./compositions/CaseFileReel";
 import { ReelThumbnail, reelThumbnailSchema } from "./compositions/ReelThumbnail";
 import { ReelStory, reelStorySchema } from "./compositions/ReelStory";
 
@@ -28,6 +29,33 @@ export const Root: React.FC = () => (
         title: "Untitled",
         hook: "",
         cta: "",
+        kicker: "FACT",
+        narration_audio: null,
+        alignment: [],
+        beats: [],
+      }}
+    />
+    <Composition
+      id="CaseFileReel"
+      component={CaseFileReel}
+      durationInFrames={1800}
+      fps={30}
+      width={1080}
+      height={1920}
+      schema={caseFileReelSchema}
+      calculateMetadata={({ props }) => {
+        const fps = 30;
+        const total = props.total_frames
+          ?? (props.cta_window?.end_frame ?? 0)
+          ?? 1800;
+        return { durationInFrames: Math.max(total, fps), fps };
+      }}
+      defaultProps={{
+        composition: "CaseFileReel",
+        title: "Untitled",
+        hook: "",
+        cta: "",
+        kicker: "FACT",
         narration_audio: null,
         alignment: [],
         beats: [],

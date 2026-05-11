@@ -37,7 +37,7 @@ Return a JSON object with these keys:
 - `title`: <=60 chars, declarative, image-able. NOT a question.
 - `hook`: 6-10 words. The first 1.5 seconds. Must STOP the thumb. See hook formula below.
 - `topic_entity`: 1-3 word canonical proper noun for the WHOLE reel, OR null if abstract.
-- `beats`: EXACTLY 4 items. Each item: `{{ "text": str, "visual_brief": {{ ... }} }}`. Beat text: 12-18 words.
+- `beats`: EXACTLY 4 items. Each item: `{{ "text": str, "visual_brief": {{ ... }}, "scene_treatment": str }}`. Beat text: 12-18 words.
 - `cta`: 8-12 words. The closing line that lands the consequence or pattern. **Do NOT include "follow for more" or "follow fact jot" — that's appended automatically by the brand outro after your CTA.**
 - `citations`: list of `{{ "claim": str, "source_url": str, "source_quote": str }}`.
 
@@ -99,8 +99,49 @@ The `visual_brief` for each beat is critical — visuals are sourced from search
 - "video" for kinetic / atmospheric beats (motion, change, action).
 - "image" for archival / specific / historical beats (named events, people, photographs).
 
+# SCENE TREATMENT — DIRECT THE SHOT
+
+Each beat carries a `scene_treatment` from a CLOSED set. This is YOU acting as art director: choosing how the asset enters the frame, not just what asset to fetch. The renderer wraps the sourced asset in the chosen treatment, so a mediocre stock image reads as deliberate when framed as evidence on a desk.
+
+**The brand aesthetic is "case file"**: documents slide across the desk, polaroids drop in, stamps slam down, evidence accumulates. Be cinematic. Use Ken Burns sparingly — only when the asset is genuinely too good to dress up.
+
+**Treatments (use these exact strings):**
+
+- `polaroid` — for INTRODUCING a person, place, or specific object (someone's face, a landmark, a named thing). Photo wraps in a white border with tape, slides onto the desk with a settling rotation. Default for any beat that names a specific person.
+
+- `evidence_slide` — for DOCUMENT-LIKE archival material (letters, charters, blueprints, scans, paintings, manuscripts). The asset slides in from off-canvas and stops in frame. Use for "official" or "documented" beats.
+
+- `redacted_doc` — for SECRECY, COVER-UP, or HIDDEN INFORMATION beats. The beat text appears as a typewritten paragraph and black redaction bars sweep across key words. Pair with stories about classified info, government secrets, suppressed history.
+
+- `stamp_reveal` — for VERDICTS, DEADLINES, OUTCOMES, or DATES that need to land hard ("CLASSIFIED", "1968", "DECLASSIFIED", "RESOLVED"). Asset shows underneath; the stamp rotates in with overshoot. Best on beat 3 or 4 where the punchline lives.
+
+- `index_card` — for QUOTES, NUMBERS, or TIGHT FACTS. Typed monospaced text on a manila card. Use when the beat is the fact itself and the asset is decorative.
+
+- `newsprint_clip` — for HISTORICAL EVENTS that were COVERED IN PRESS. Halftone-filtered image with a yellowed border, like a newspaper clipping pinned to the board. Use for crimes, scandals, disasters, public events.
+
+- `archive_film` — for OLD FOOTAGE or VINTAGE atmosphere. Black-and-white film-strip frame around the asset. Use for pre-1970s context, retro feel.
+
+- `map_pin` — for LOCATIONS. Asset displays alongside a map fragment with a push-pin drop. Use the FIRST time a place is named.
+
+- `red_thread` — for CONNECTIONS BETWEEN BEATS. NEVER on beat 0 (nothing to connect to). Use when this beat ties back to the previous beat's subject (same person, same place, same date).
+
+- `ken_burns` — the v1 fallback. Full-bleed asset with slow zoom. Reserve for when the asset is so striking it deserves the full frame.
+
+**Picking rules:**
+- Variety matters. Don't pick the same treatment for all four beats; mix at least 3 different treatments per script.
+- Match the EMOTIONAL beat to the treatment, not the literal noun.
+- Beat 0 introduces the subject — usually `polaroid` (person), `evidence_slide` (document), `map_pin` (place), or `newsprint_clip` (event).
+- Beat 3 lands the consequence — often `stamp_reveal` or `redacted_doc`.
+
 Return ONLY the JSON. No prose around it.
 """
+
+
+VALID_TREATMENTS = {
+    "polaroid", "evidence_slide", "redacted_doc", "stamp_reveal",
+    "index_card", "newsprint_clip", "archive_film", "map_pin",
+    "red_thread", "ken_burns",
+}
 
 
 def _load_style_guide() -> str:
@@ -124,13 +165,25 @@ def _strip_banned_punctuation(text: str) -> str:
 
 
 def _scrub_script(data: dict) -> dict:
-    """Walk every voice-facing string and strip banned punctuation."""
+    """Walk every voice-facing string and strip banned punctuation.
+
+    Also validates `scene_treatment` per beat. If the writer omitted one or
+    picked a treatment the renderer doesn't know, fall back to ken_burns so
+    the renderer never has to handle a missing-or-unknown enum.
+    """
     for key in ("hook", "cta", "title"):
         if key in data and isinstance(data[key], str):
             data[key] = _strip_banned_punctuation(data[key])
-    for beat in data.get("beats", []):
+    for idx, beat in enumerate(data.get("beats", [])):
         if isinstance(beat.get("text"), str):
             beat["text"] = _strip_banned_punctuation(beat["text"])
+        treatment = beat.get("scene_treatment")
+        if treatment not in VALID_TREATMENTS:
+            log.info("scene_treatment_fallback", beat_index=idx, got=treatment)
+            beat["scene_treatment"] = "ken_burns"
+        # red_thread on beat 0 has nothing to connect to — push to polaroid.
+        if idx == 0 and beat["scene_treatment"] == "red_thread":
+            beat["scene_treatment"] = "polaroid"
     return data
 
 

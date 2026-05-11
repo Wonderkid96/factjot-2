@@ -2,7 +2,7 @@ import React from "react";
 import { z } from "zod";
 import {
   AbsoluteFill, Sequence, useVideoConfig, useCurrentFrame,
-  interpolate, spring, Easing, Audio, Img, OffthreadVideo,
+  interpolate, spring, Easing, Audio, Img, OffthreadVideo, Loop,
 } from "remotion";
 import { Wordmark } from "../components/Wordmark";
 import { YearAccent } from "../components/YearAccent";
@@ -410,7 +410,7 @@ function OutroWordmark() {
 // V1 film-grain overlay — the same .mov V1 uses, screen-blended at ~65%
 // opacity. Loops (the video is ~58s, sufficient for any reel length).
 // Replaces the SVG fractalNoise approach so we match V1's aesthetic byte-for-byte.
-function GrainOverlay({ src }: { src?: string | null }) {
+function GrainOverlay({ src, durationInFrames }: { src?: string | null; durationInFrames: number }) {
   if (!src) {
     return null;
   }
@@ -420,12 +420,13 @@ function GrainOverlay({ src }: { src?: string | null }) {
       mixBlendMode: "screen",
       opacity: 0.55,
     }}>
-      <OffthreadVideo
-        src={src}
-        loop
-        muted
-        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-      />
+      <Loop durationInFrames={Math.max(durationInFrames, 1)}>
+        <OffthreadVideo
+          src={src}
+          muted
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        />
+      </Loop>
     </AbsoluteFill>
   );
 }
@@ -602,7 +603,7 @@ export const FactReel: React.FC<z.infer<typeof factReelSchema>> = ({
 
       {/* V1 film-grain overlay — screen-blended on top. Sits OUTSIDE the weave
           wrapper so it stays pinned to the frame, not shifted with the asset. */}
-      <GrainOverlay src={grit_overlay} />
+      <GrainOverlay src={grit_overlay} durationInFrames={Math.max(outroEnd, 60)} />
 
       {/* Brand intro overlay — alpha-channel video on top for the first 1.37s.
           ProRes 4444 yuva444p12le source carries a real alpha channel; Remotion

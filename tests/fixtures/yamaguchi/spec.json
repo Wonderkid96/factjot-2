@@ -1,1 +1,580 @@
-{"composition": "FactReel", "title": "One Man Survived Both Atomic Bombs", "hook": "One man stood inside both atomic blasts.", "cta": "The same man witnessed humanity cross that line twice.", "narration_audio": "http://127.0.0.1:49289/narration.mp3", "intro_overlay": "http://127.0.0.1:49289/intro.mov", "alignment": [{"word": "One", "start": 0.0, "end": 0.14454545454545453}, {"word": "man", "start": 0.25363636363636366, "end": 0.5809090909090908}, {"word": "stood", "start": 0.6418181818181817, "end": 0.9463636363636362}, {"word": "inside", "start": 1.0290909090909088, "end": 1.5254545454545452}, {"word": "both", "start": 1.6418181818181816, "end": 2.107272727272727}, {"word": "atomic", "start": 2.1899999999999995, "end": 2.686363636363636}, {"word": "blasts.", "start": 2.759090909090909, "end": 3.268181818181818}, {"word": "Tsutomu", "start": 3.631818181818182, "end": 4.868181818181818}, {"word": "Yamaguchi", "start": 4.9409090909090905, "end": 5.740909090909091}, {"word": "was", "start": 5.813636363636363, "end": 6.031818181818181}, {"word": "in", "start": 6.079999999999999, "end": 6.176363636363636}, {"word": "Hiroshima", "start": 6.219999999999999, "end": 6.758181818181818}, {"word": "on", "start": 6.806363636363636, "end": 6.902727272727272}, {"word": "a", "start": 6.9390909090909085, "end": 6.975454545454545}, {"word": "business", "start": 7.015454545454545, "end": 7.335454545454546}, {"word": "trip", "start": 7.393636363636363, "end": 7.626363636363635}, {"word": "when", "start": 7.655454545454544, "end": 7.771818181818181}, {"word": "the", "start": 7.79, "end": 7.844545454545454}, {"word": "first", "start": 7.892727272727273, "end": 8.133636363636363}, {"word": "bomb", "start": 8.206363636363635, "end": 8.497272727272726}, {"word": "dropped.", "start": 8.542727272727273, "end": 9.006363636363636}, {"word": "He", "start": 9.272727272727272, "end": 9.805454545454545}, {"word": "survived,", "start": 9.87, "end": 10.604545454545454}, {"word": "bandaged", "start": 10.648181818181817, "end": 11.113636363636362}, {"word": "his", "start": 11.15, "end": 11.259090909090908}, {"word": "burns,", "start": 11.33181818181818, "end": 11.768181818181818}, {"word": "and", "start": 11.786363636363635, "end": 11.84090909090909}, {"word": "boarded", "start": 11.904545454545454, "end": 12.35}, {"word": "a", "start": 12.386363636363635, "end": 12.42272727272727}, {"word": "train", "start": 12.483636363636363, "end": 12.788181818181817}, {"word": "back", "start": 12.83181818181818, "end": 13.006363636363636}, {"word": "home", "start": 13.049999999999999, "end": 13.224545454545455}, {"word": "to", "start": 13.249090909090908, "end": 13.298181818181817}, {"word": "Nagasaki.", "start": 13.352727272727272, "end": 14.025454545454545}, {"word": "Three", "start": 14.219090909090909, "end": 15.187272727272726}, {"word": "days", "start": 15.26, "end": 15.55090909090909}, {"word": "later,", "start": 15.61181818181818, "end": 16.207272727272727}, {"word": "the", "start": 16.225454545454543, "end": 16.28}, {"word": "second", "start": 16.34272727272727, "end": 16.719090909090905}, {"word": "bomb", "start": 16.79181818181818, "end": 17.082727272727272}, {"word": "fell.", "start": 17.155454545454543, "end": 17.51909090909091}, {"word": "He", "start": 17.834545454545452, "end": 18.465454545454545}, {"word": "was", "start": 18.50181818181818, "end": 18.61090909090909}, {"word": "in", "start": 18.659090909090907, "end": 18.755454545454544}, {"word": "his", "start": 18.79181818181818, "end": 18.90090909090909}, {"word": "office,", "start": 18.96363636363636, "end": 19.558181818181815}, {"word": "reporting", "start": 19.60181818181818, "end": 19.994545454545452}, {"word": "to", "start": 20.042727272727273, "end": 20.139090909090907}, {"word": "his", "start": 20.175454545454546, "end": 20.28454545454545}, {"word": "boss.", "start": 20.371818181818178, "end": 20.793636363636363}, {"word": "Japan", "start": 21.06, "end": 22.39181818181818}, {"word": "officially", "start": 22.44454545454545, "end": 22.97181818181818}, {"word": "recognised", "start": 23.030909090909088, "end": 23.62181818181818}, {"word": "Yamaguchi", "start": 23.676363636363636, "end": 24.276363636363634}, {"word": "as", "start": 24.349090909090908, "end": 24.494545454545452}, {"word": "a", "start": 24.567272727272726, "end": 24.639999999999997}, {"word": "double", "start": 24.71272727272727, "end": 25.14909090909091}, {"word": "survivor", "start": 25.23818181818182, "end": 25.95090909090909}, {"word": "in", "start": 26.071818181818177, "end": 26.313636363636363}, {"word": "2009.", "start": 26.677272727272722, "end": 27.40363636363636}, {"word": "He", "start": 27.719090909090905, "end": 28.349999999999998}, {"word": "lived", "start": 28.422727272727272, "end": 28.78636363636363}, {"word": "to", "start": 28.907272727272723, "end": 29.14909090909091}, {"word": "ninety", "start": 29.190909090909088, "end": 29.44181818181818}, {"word": "three.", "start": 29.502727272727274, "end": 30.02545454545454}, {"word": "The", "start": 30.298181818181817, "end": 31.116363636363634}, {"word": "same", "start": 31.20363636363636, "end": 31.552727272727267}, {"word": "man", "start": 31.66181818181818, "end": 31.98909090909091}, {"word": "witnessed", "start": 32.032727272727264, "end": 32.42545454545454}, {"word": "humanity", "start": 32.489999999999995, "end": 33.00636363636364}, {"word": "cross", "start": 33.090909090909086, "end": 33.513636363636365}, {"word": "that", "start": 33.557272727272725, "end": 33.73181818181818}, {"word": "line", "start": 33.86272727272727, "end": 34.38636363636363}, {"word": "twice.", "start": 34.519999999999996, "end": 35.26090909090909}, {"word": "Follow", "start": 35.4690909090909, "end": 36.71818181818182}, {"word": "fact", "start": 36.80545454545454, "end": 37.15454545454545}, {"word": "jot", "start": 37.263636363636365, "end": 37.590909090909086}, {"word": "for", "start": 37.66363636363636, "end": 37.88181818181818}, {"word": "more", "start": 37.95454545454545, "end": 38.24545454545454}, {"word": "facts.", "start": 38.32999999999999, "end": 38.82545454545454}], "hook_window": {"start_frame": 0, "end_frame": 167}, "cta_window": {"start_frame": 977, "end_frame": 1132}, "outro_window": {"start_frame": 1133, "end_frame": 1242}, "outro_text": "Follow fact jot for more facts.", "total_frames": 1275, "narration_offset_frames": 75, "beats": [{"text": "Tsutomu Yamaguchi was in Hiroshima on a business trip when the first bomb dropped.", "start_frame": 177, "end_frame": 343, "chunks": [{"text": "Tsutomu Yamaguchi was", "start_frame": 177, "end_frame": 249}, {"text": "in Hiroshima on", "start_frame": 251, "end_frame": 276}, {"text": "a business trip", "start_frame": 277, "end_frame": 297}, {"text": "when the first", "start_frame": 298, "end_frame": 313}, {"text": "bomb dropped.", "start_frame": 315, "end_frame": 339}], "asset": {"path": "http://127.0.0.1:49289/assets/beat-0.jpg", "source": "wikimedia"}}, {"text": "He survived, bandaged his burns, and boarded a train back home to Nagasaki.", "start_frame": 347, "end_frame": 494, "chunks": [{"text": "He survived, bandaged", "start_frame": 347, "end_frame": 402}, {"text": "his burns, and", "start_frame": 403, "end_frame": 424}, {"text": "boarded a train", "start_frame": 426, "end_frame": 452}, {"text": "back home to", "start_frame": 453, "end_frame": 467}, {"text": "Nagasaki.", "start_frame": 469, "end_frame": 489}], "asset": {"path": "http://127.0.0.1:49289/assets/beat-1.jpg", "source": "wikimedia"}}, {"text": "Three days later, the second bomb fell. He was in his office, reporting to his boss.", "start_frame": 495, "end_frame": 697, "chunks": [{"text": "Three days later,", "start_frame": 495, "end_frame": 555}, {"text": "the second bomb", "start_frame": 555, "end_frame": 581}, {"text": "fell. He was", "start_frame": 583, "end_frame": 627}, {"text": "in his office,", "start_frame": 628, "end_frame": 655}, {"text": "reporting to his", "start_frame": 657, "end_frame": 677}, {"text": "boss.", "start_frame": 680, "end_frame": 692}], "asset": {"path": "http://127.0.0.1:49289/assets/beat-2.jpg", "source": "wikimedia"}}, {"text": "Japan officially recognised Yamaguchi as a double survivor in 2009. He lived to ninety three.", "start_frame": 700, "end_frame": 974, "chunks": [{"text": "Japan officially recognised", "start_frame": 700, "end_frame": 777}, {"text": "Yamaguchi as a", "start_frame": 779, "end_frame": 808}, {"text": "double survivor in", "start_frame": 810, "end_frame": 858}, {"text": "2009. He lived", "start_frame": 869, "end_frame": 932}, {"text": "to ninety three.", "start_frame": 936, "end_frame": 969}], "asset": {"path": "http://127.0.0.1:49289/assets/beat-3.jpg", "source": "wikimedia"}}]}
+{
+  "composition": "CaseFileReel",
+  "title": "One Man Survived Both Atomic Bombs",
+  "hook": "One man stood inside both atomic blasts.",
+  "cta": "The same man witnessed humanity cross that line twice.",
+  "narration_audio": "http://127.0.0.1:49289/narration.mp3",
+  "intro_overlay": "http://127.0.0.1:49289/intro.mov",
+  "alignment": [
+    {
+      "word": "One",
+      "start": 0.0,
+      "end": 0.14454545454545453
+    },
+    {
+      "word": "man",
+      "start": 0.25363636363636366,
+      "end": 0.5809090909090908
+    },
+    {
+      "word": "stood",
+      "start": 0.6418181818181817,
+      "end": 0.9463636363636362
+    },
+    {
+      "word": "inside",
+      "start": 1.0290909090909088,
+      "end": 1.5254545454545452
+    },
+    {
+      "word": "both",
+      "start": 1.6418181818181816,
+      "end": 2.107272727272727
+    },
+    {
+      "word": "atomic",
+      "start": 2.1899999999999995,
+      "end": 2.686363636363636
+    },
+    {
+      "word": "blasts.",
+      "start": 2.759090909090909,
+      "end": 3.268181818181818
+    },
+    {
+      "word": "Tsutomu",
+      "start": 3.631818181818182,
+      "end": 4.868181818181818
+    },
+    {
+      "word": "Yamaguchi",
+      "start": 4.9409090909090905,
+      "end": 5.740909090909091
+    },
+    {
+      "word": "was",
+      "start": 5.813636363636363,
+      "end": 6.031818181818181
+    },
+    {
+      "word": "in",
+      "start": 6.079999999999999,
+      "end": 6.176363636363636
+    },
+    {
+      "word": "Hiroshima",
+      "start": 6.219999999999999,
+      "end": 6.758181818181818
+    },
+    {
+      "word": "on",
+      "start": 6.806363636363636,
+      "end": 6.902727272727272
+    },
+    {
+      "word": "a",
+      "start": 6.9390909090909085,
+      "end": 6.975454545454545
+    },
+    {
+      "word": "business",
+      "start": 7.015454545454545,
+      "end": 7.335454545454546
+    },
+    {
+      "word": "trip",
+      "start": 7.393636363636363,
+      "end": 7.626363636363635
+    },
+    {
+      "word": "when",
+      "start": 7.655454545454544,
+      "end": 7.771818181818181
+    },
+    {
+      "word": "the",
+      "start": 7.79,
+      "end": 7.844545454545454
+    },
+    {
+      "word": "first",
+      "start": 7.892727272727273,
+      "end": 8.133636363636363
+    },
+    {
+      "word": "bomb",
+      "start": 8.206363636363635,
+      "end": 8.497272727272726
+    },
+    {
+      "word": "dropped.",
+      "start": 8.542727272727273,
+      "end": 9.006363636363636
+    },
+    {
+      "word": "He",
+      "start": 9.272727272727272,
+      "end": 9.805454545454545
+    },
+    {
+      "word": "survived,",
+      "start": 9.87,
+      "end": 10.604545454545454
+    },
+    {
+      "word": "bandaged",
+      "start": 10.648181818181817,
+      "end": 11.113636363636362
+    },
+    {
+      "word": "his",
+      "start": 11.15,
+      "end": 11.259090909090908
+    },
+    {
+      "word": "burns,",
+      "start": 11.33181818181818,
+      "end": 11.768181818181818
+    },
+    {
+      "word": "and",
+      "start": 11.786363636363635,
+      "end": 11.84090909090909
+    },
+    {
+      "word": "boarded",
+      "start": 11.904545454545454,
+      "end": 12.35
+    },
+    {
+      "word": "a",
+      "start": 12.386363636363635,
+      "end": 12.42272727272727
+    },
+    {
+      "word": "train",
+      "start": 12.483636363636363,
+      "end": 12.788181818181817
+    },
+    {
+      "word": "back",
+      "start": 12.83181818181818,
+      "end": 13.006363636363636
+    },
+    {
+      "word": "home",
+      "start": 13.049999999999999,
+      "end": 13.224545454545455
+    },
+    {
+      "word": "to",
+      "start": 13.249090909090908,
+      "end": 13.298181818181817
+    },
+    {
+      "word": "Nagasaki.",
+      "start": 13.352727272727272,
+      "end": 14.025454545454545
+    },
+    {
+      "word": "Three",
+      "start": 14.219090909090909,
+      "end": 15.187272727272726
+    },
+    {
+      "word": "days",
+      "start": 15.26,
+      "end": 15.55090909090909
+    },
+    {
+      "word": "later,",
+      "start": 15.61181818181818,
+      "end": 16.207272727272727
+    },
+    {
+      "word": "the",
+      "start": 16.225454545454543,
+      "end": 16.28
+    },
+    {
+      "word": "second",
+      "start": 16.34272727272727,
+      "end": 16.719090909090905
+    },
+    {
+      "word": "bomb",
+      "start": 16.79181818181818,
+      "end": 17.082727272727272
+    },
+    {
+      "word": "fell.",
+      "start": 17.155454545454543,
+      "end": 17.51909090909091
+    },
+    {
+      "word": "He",
+      "start": 17.834545454545452,
+      "end": 18.465454545454545
+    },
+    {
+      "word": "was",
+      "start": 18.50181818181818,
+      "end": 18.61090909090909
+    },
+    {
+      "word": "in",
+      "start": 18.659090909090907,
+      "end": 18.755454545454544
+    },
+    {
+      "word": "his",
+      "start": 18.79181818181818,
+      "end": 18.90090909090909
+    },
+    {
+      "word": "office,",
+      "start": 18.96363636363636,
+      "end": 19.558181818181815
+    },
+    {
+      "word": "reporting",
+      "start": 19.60181818181818,
+      "end": 19.994545454545452
+    },
+    {
+      "word": "to",
+      "start": 20.042727272727273,
+      "end": 20.139090909090907
+    },
+    {
+      "word": "his",
+      "start": 20.175454545454546,
+      "end": 20.28454545454545
+    },
+    {
+      "word": "boss.",
+      "start": 20.371818181818178,
+      "end": 20.793636363636363
+    },
+    {
+      "word": "Japan",
+      "start": 21.06,
+      "end": 22.39181818181818
+    },
+    {
+      "word": "officially",
+      "start": 22.44454545454545,
+      "end": 22.97181818181818
+    },
+    {
+      "word": "recognised",
+      "start": 23.030909090909088,
+      "end": 23.62181818181818
+    },
+    {
+      "word": "Yamaguchi",
+      "start": 23.676363636363636,
+      "end": 24.276363636363634
+    },
+    {
+      "word": "as",
+      "start": 24.349090909090908,
+      "end": 24.494545454545452
+    },
+    {
+      "word": "a",
+      "start": 24.567272727272726,
+      "end": 24.639999999999997
+    },
+    {
+      "word": "double",
+      "start": 24.71272727272727,
+      "end": 25.14909090909091
+    },
+    {
+      "word": "survivor",
+      "start": 25.23818181818182,
+      "end": 25.95090909090909
+    },
+    {
+      "word": "in",
+      "start": 26.071818181818177,
+      "end": 26.313636363636363
+    },
+    {
+      "word": "2009.",
+      "start": 26.677272727272722,
+      "end": 27.40363636363636
+    },
+    {
+      "word": "He",
+      "start": 27.719090909090905,
+      "end": 28.349999999999998
+    },
+    {
+      "word": "lived",
+      "start": 28.422727272727272,
+      "end": 28.78636363636363
+    },
+    {
+      "word": "to",
+      "start": 28.907272727272723,
+      "end": 29.14909090909091
+    },
+    {
+      "word": "ninety",
+      "start": 29.190909090909088,
+      "end": 29.44181818181818
+    },
+    {
+      "word": "three.",
+      "start": 29.502727272727274,
+      "end": 30.02545454545454
+    },
+    {
+      "word": "The",
+      "start": 30.298181818181817,
+      "end": 31.116363636363634
+    },
+    {
+      "word": "same",
+      "start": 31.20363636363636,
+      "end": 31.552727272727267
+    },
+    {
+      "word": "man",
+      "start": 31.66181818181818,
+      "end": 31.98909090909091
+    },
+    {
+      "word": "witnessed",
+      "start": 32.032727272727264,
+      "end": 32.42545454545454
+    },
+    {
+      "word": "humanity",
+      "start": 32.489999999999995,
+      "end": 33.00636363636364
+    },
+    {
+      "word": "cross",
+      "start": 33.090909090909086,
+      "end": 33.513636363636365
+    },
+    {
+      "word": "that",
+      "start": 33.557272727272725,
+      "end": 33.73181818181818
+    },
+    {
+      "word": "line",
+      "start": 33.86272727272727,
+      "end": 34.38636363636363
+    },
+    {
+      "word": "twice.",
+      "start": 34.519999999999996,
+      "end": 35.26090909090909
+    },
+    {
+      "word": "Follow",
+      "start": 35.4690909090909,
+      "end": 36.71818181818182
+    },
+    {
+      "word": "fact",
+      "start": 36.80545454545454,
+      "end": 37.15454545454545
+    },
+    {
+      "word": "jot",
+      "start": 37.263636363636365,
+      "end": 37.590909090909086
+    },
+    {
+      "word": "for",
+      "start": 37.66363636363636,
+      "end": 37.88181818181818
+    },
+    {
+      "word": "more",
+      "start": 37.95454545454545,
+      "end": 38.24545454545454
+    },
+    {
+      "word": "facts.",
+      "start": 38.32999999999999,
+      "end": 38.82545454545454
+    }
+  ],
+  "hook_window": {
+    "start_frame": 0,
+    "end_frame": 167
+  },
+  "cta_window": {
+    "start_frame": 977,
+    "end_frame": 1132
+  },
+  "outro_window": {
+    "start_frame": 1133,
+    "end_frame": 1242
+  },
+  "outro_text": "Follow fact jot for more facts.",
+  "total_frames": 1275,
+  "narration_offset_frames": 75,
+  "beats": [
+    {
+      "text": "Tsutomu Yamaguchi was in Hiroshima on a business trip when the first bomb dropped.",
+      "start_frame": 177,
+      "end_frame": 343,
+      "chunks": [
+        {
+          "text": "Tsutomu Yamaguchi was",
+          "start_frame": 177,
+          "end_frame": 249
+        },
+        {
+          "text": "in Hiroshima on",
+          "start_frame": 251,
+          "end_frame": 276
+        },
+        {
+          "text": "a business trip",
+          "start_frame": 277,
+          "end_frame": 297
+        },
+        {
+          "text": "when the first",
+          "start_frame": 298,
+          "end_frame": 313
+        },
+        {
+          "text": "bomb dropped.",
+          "start_frame": 315,
+          "end_frame": 339
+        }
+      ],
+      "asset": {
+        "path": "http://127.0.0.1:49289/assets/beat-0.jpg",
+        "source": "wikimedia"
+      },
+      "scene_treatment": "polaroid"
+    },
+    {
+      "text": "He survived, bandaged his burns, and boarded a train back home to Nagasaki.",
+      "start_frame": 347,
+      "end_frame": 494,
+      "chunks": [
+        {
+          "text": "He survived, bandaged",
+          "start_frame": 347,
+          "end_frame": 402
+        },
+        {
+          "text": "his burns, and",
+          "start_frame": 403,
+          "end_frame": 424
+        },
+        {
+          "text": "boarded a train",
+          "start_frame": 426,
+          "end_frame": 452
+        },
+        {
+          "text": "back home to",
+          "start_frame": 453,
+          "end_frame": 467
+        },
+        {
+          "text": "Nagasaki.",
+          "start_frame": 469,
+          "end_frame": 489
+        }
+      ],
+      "asset": {
+        "path": "http://127.0.0.1:49289/assets/beat-1.jpg",
+        "source": "wikimedia"
+      },
+      "scene_treatment": "evidence_slide"
+    },
+    {
+      "text": "Three days later, the second bomb fell. He was in his office, reporting to his boss.",
+      "start_frame": 495,
+      "end_frame": 697,
+      "chunks": [
+        {
+          "text": "Three days later,",
+          "start_frame": 495,
+          "end_frame": 555
+        },
+        {
+          "text": "the second bomb",
+          "start_frame": 555,
+          "end_frame": 581
+        },
+        {
+          "text": "fell. He was",
+          "start_frame": 583,
+          "end_frame": 627
+        },
+        {
+          "text": "in his office,",
+          "start_frame": 628,
+          "end_frame": 655
+        },
+        {
+          "text": "reporting to his",
+          "start_frame": 657,
+          "end_frame": 677
+        },
+        {
+          "text": "boss.",
+          "start_frame": 680,
+          "end_frame": 692
+        }
+      ],
+      "asset": {
+        "path": "http://127.0.0.1:49289/assets/beat-2.jpg",
+        "source": "wikimedia"
+      },
+      "scene_treatment": "newsprint_clip"
+    },
+    {
+      "text": "Japan officially recognised Yamaguchi as a double survivor in 2009. He lived to ninety three.",
+      "start_frame": 700,
+      "end_frame": 974,
+      "chunks": [
+        {
+          "text": "Japan officially recognised",
+          "start_frame": 700,
+          "end_frame": 777
+        },
+        {
+          "text": "Yamaguchi as a",
+          "start_frame": 779,
+          "end_frame": 808
+        },
+        {
+          "text": "double survivor in",
+          "start_frame": 810,
+          "end_frame": 858
+        },
+        {
+          "text": "2009. He lived",
+          "start_frame": 869,
+          "end_frame": 932
+        },
+        {
+          "text": "to ninety three.",
+          "start_frame": 936,
+          "end_frame": 969
+        }
+      ],
+      "asset": {
+        "path": "http://127.0.0.1:49289/assets/beat-3.jpg",
+        "source": "wikimedia"
+      },
+      "scene_treatment": "stamp_reveal"
+    }
+  ]
+}

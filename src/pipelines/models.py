@@ -32,9 +32,28 @@ class VisualBrief(BaseModel):
     period_constraints: dict[str, int | list[str]] | None = None
 
 
+SceneTreatment = Literal[
+    "polaroid",        # photo wrapped in white border + tape, slid onto desk
+    "evidence_slide",  # document slides in from off-canvas, settles in frame
+    "redacted_doc",    # typewriter paragraph with sweeping black bars
+    "stamp_reveal",    # asset already on screen, big stamp slams in over it
+    "index_card",      # typed monospaced fact on a manila card
+    "newsprint_clip",  # halftone-filtered image inside a yellowed newspaper crop
+    "archive_film",    # black-and-white film-strip frame around moving asset
+    "map_pin",         # asset on a map fragment with a pin drop
+    "red_thread",      # connects this beat's pinned asset to the prior one
+    "ken_burns",       # the v1 fallback — full-bleed asset with slow zoom
+]
+
+
 class Beat(BaseModel):
     text: str
     visual_brief: VisualBrief | dict = Field(default_factory=dict)
+    # Directorial choice the script writer picks for this beat. Drives which
+    # CaseFileReel scene component renders the asset. Falls back to the
+    # full-bleed Ken Burns treatment when the writer omits or the renderer
+    # can't satisfy the chosen treatment (e.g. red_thread on beat 0).
+    scene_treatment: SceneTreatment = "ken_burns"
 
 
 class PostMetadata(BaseModel):

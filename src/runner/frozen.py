@@ -104,6 +104,10 @@ def render_from_fixture(fixture_name: str, pipeline_name: str) -> Path:
                     queries=["frozen"],
                     preferred_source="image",
                 ),
+                # Honour the spec's scene_treatment if present, falls back to
+                # ken_burns for legacy fixtures. Lets fixtures hand-author
+                # treatments without round-tripping through the script writer.
+                scene_treatment=b.get("scene_treatment", "ken_burns"),
             )
             for b in spec["beats"]
         ],

@@ -28,6 +28,43 @@ TAIL_BUFFER_SECONDS = 1.2
 KARAOKE_LEAD_FRAMES = 2          # ~67ms lead on word highlight (audio lags visual perception)
 EMPHASIS_PATTERN = ("0","1","2","3","4","5","6","7","8","9")
 
+# Words that should be SPOKEN by the narrator but NOT rendered in the caption.
+# Brand-name avoidance: when the outro is "Follow fact jot for more facts", the
+# big factjot wordmark animates in at the same time — having "fact jot" in the
+# caption AND as the logo reads as the brand being shouted twice. We keep the
+# audio intact and just suppress these words from the karaoke captions.
+SUPPRESSED_CAPTION_WORDS = {"fact", "jot", "factjot"}
+
+
+def _is_suppressed(word: str) -> bool:
+    """True if a word's spoken text should be hidden from captions.
+    Strips trailing punctuation before matching.
+    """
+    stripped = word.lower().rstrip(".,!?:;\"'")
+    return stripped in SUPPRESSED_CAPTION_WORDS
+
+
+def _strip_suppressed_from_chunks(chunks: list[dict]) -> list[dict]:
+    """Remove suppressed words from each chunk's word list AND chunk text.
+
+    Chunks whose word lists become empty after filtering are dropped entirely
+    (they'd render as empty captions otherwise). Chunk start/end frames are
+    re-derived from the surviving words so the karaoke window still aligns
+    with what's left on screen.
+    """
+    out: list[dict] = []
+    for c in chunks:
+        kept = [w for w in c.get("words", []) if not _is_suppressed(w["text"])]
+        if not kept:
+            continue
+        out.append({
+            "text": " ".join(w["text"] for w in kept),
+            "start_frame": kept[0]["start_frame"],
+            "end_frame": kept[-1]["end_frame"],
+            "words": kept,
+        })
+    return out
+
 
 def _has_digit(word: str) -> bool:
     """True if the word contains any digit — used to flag stat/year emphasis."""
@@ -201,6 +238,10 @@ def _compute_timeline(script, alignment, fps: int = 30) -> dict:
         outro_start = float(alignment[outro_word_start]["start"])
         outro_end = float(alignment[-1]["end"]) + 0.3
         outro_chunks = _chunks_from_alignment(alignment[outro_word_start:], fps, f)
+        # The brand name ("fact jot") is part of the SPOKEN outro but should
+        # NOT appear in captions — the big factjot wordmark animates in over
+        # the outro, so caption + logo would read the brand twice.
+        outro_chunks = _strip_suppressed_from_chunks(outro_chunks)
     else:
         outro_start = cta_end
         outro_end = outro_start + 1.5

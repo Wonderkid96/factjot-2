@@ -1,6 +1,16 @@
 import argparse
 import os
 import sys
+
+# Load .env into os.environ FIRST, before anything else imports. This is what
+# makes the FACTJOT_FROZEN lock real: pydantic-settings reads .env into the
+# Settings() object but does NOT populate os.environ, so the
+# os.getenv("FACTJOT_FROZEN") guards in script_writer + elevenlabs never saw
+# the .env value before this. With load_dotenv() here, .env behaves the way
+# it reads — set FACTJOT_FROZEN=1 and the paid APIs actually refuse to fire.
+from dotenv import load_dotenv
+load_dotenv()
+
 from src.core.logger import get_logger
 from src.pipelines.registry import get_pipeline
 

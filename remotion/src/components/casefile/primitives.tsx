@@ -1,5 +1,5 @@
 import React from "react";
-import { useCurrentFrame, useVideoConfig, spring, interpolate, Easing } from "remotion";
+import { useCurrentFrame, interpolate, Easing } from "remotion";
 
 // Shared low-level building blocks for the case-file scene kit. Treatments
 // import these so we get a consistent feel across the deck: every paper has
@@ -52,35 +52,42 @@ export function Tape({ side, rotation = -6, width = 110 }: TapeProps) {
   );
 }
 
-// ---------- Settle spring ----------
+// ---------- Slide settle ----------
 
-// Springs that simulate a paper landing on the desk: overshoots its target
-// then settles. `delay` is in frames; lets you stagger entry across stacked
-// items (used in EvidenceStack).
-export function useSettleSpring(delay = 0): number {
+// Returns 0..1 across SETTLE_FRAMES with a strong ease-out, NO overshoot.
+// Models a paper sliding across a table and decelerating to rest under
+// friction — not a spring. Used as `progress` by scenes to interpolate
+// position/rotation from "off-canvas" to "settled".
+//
+// Friction curve: cubic-bezier(0.18, 0.9, 0.22, 1.0) — front-loaded velocity
+// that ramps down to zero. Matches the way real paper behaves: most of the
+// travel happens in the first third of the animation, the last third is the
+// slow glide-to-stop.
+export const SETTLE_FRAMES = 22;
+const SLIDE_EASE = Easing.bezier(0.18, 0.9, 0.22, 1.0);
+
+export function useSettleProgress(delay = 0): number {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  return spring({
-    frame: Math.max(0, frame - delay),
-    fps,
-    config: { damping: 11, stiffness: 95, mass: 1.1 },
-  });
+  return interpolate(
+    Math.max(0, frame - delay),
+    [0, SETTLE_FRAMES],
+    [0, 1],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: SLIDE_EASE },
+  );
 }
 
-// A short scale jolt that runs in the first ~6 frames, simulating the paper
-// hitting the desk surface (slight squash). Returns a multiplier on Y-scale.
-export function useImpactBounce(delay = 0): number {
-  const frame = useCurrentFrame();
-  const local = frame - delay;
-  if (local < 0 || local > 12) {
-    return 1;
-  }
-  // 1.0 → 0.93 → 1.04 → 1.0 across 12 frames
-  return interpolate(local, [0, 3, 7, 12], [1.0, 0.93, 1.04, 1.0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-    easing: Easing.bezier(0.4, 0, 0.2, 1),
-  });
+// Back-compat alias — older scenes import useSettleSpring expecting the
+// 0..1 progress shape (they don't care about the spring overshoot, they
+// just used it as a 0→1 driver). Mapping the old name to the new function
+// removes the overshoot everywhere in one swap.
+export const useSettleSpring = useSettleProgress;
+
+// No-op impact bounce — kept exported so existing scene files don't break.
+// Returns a constant 1 (no squash). Real paper sliding to a stop doesn't
+// squash; older scenes called this for a small Y-scale bounce that read as
+// cartoony rather than natural.
+export function useImpactBounce(_delay = 0): number {
+  return 1;
 }
 
 // ---------- Subtle hand wobble ----------

@@ -82,11 +82,10 @@ export const caseFileReelSchema = z.object({
 });
 
 const INTRO_DURATION_S = 1.37;
-// Case-file scenes leave ~25% of vertical space empty below the scene element
-// (polaroid, document, card all centre-anchored ~510-1410). Captions land in
-// that desk negative space at 0.78 of frame height = ~1500px from top.
-// Stays clear of the Instagram bottom safe zone (~1680+).
-const CAPTION_TOP_FRACTION = 0.78;
+// TikTok-style caption position — anchored to the bottom third with the
+// font sized so the line wraps to ~2 lines max. The CENTRE of the frame
+// is reserved for animations + scene visuals.
+const CAPTION_TOP_FRACTION = 0.72;
 const FRAME_H = 1920;
 
 function isVideoUrl(p: string | null): boolean {
@@ -94,24 +93,29 @@ function isVideoUrl(p: string | null): boolean {
   return p.endsWith(".mp4") || p.endsWith(".webm") || p.endsWith(".mov");
 }
 
-// ---------- Caption (plain block, no karaoke) ----------
+// ---------- Caption (TikTok-style bold block) ----------
 
-// Karaoke per-word colour flip was distracting + the timing never lined up
-// cleanly with the encoded audio. Captions now render as a single white block
-// per chunk — the text appears, the narrator says it, the text leaves. The
-// word/emphasis fields are accepted but ignored.
+// TikTok caption convention: bottom-anchored, large bold sans, heavy stroke
+// AND drop-shadow so the text reads on any background. Designed to sit in
+// the bottom third while the centre of the frame stays clear for scenes
+// and animation overlays.
 function ChunkCaption({ text }: { text: string }) {
   return (
     <p style={{
       color: "#FFFFFF",
-      fontFamily: "Space Grotesk",
-      fontWeight: 700,
-      fontSize: 64,
-      lineHeight: 1.15,
-      letterSpacing: "-0.005em",
+      fontFamily: "Archivo Black",
+      fontWeight: 900,
+      fontSize: 76,
+      lineHeight: 1.1,
+      letterSpacing: "-0.01em",
       margin: 0,
       textAlign: "center",
-      textShadow: "0 4px 18px rgba(0,0,0,0.85), 0 0 8px rgba(0,0,0,0.6)",
+      textTransform: "lowercase",
+      // Heavy black stroke for TikTok-style legibility on any background,
+      // plus a soft drop shadow for depth on dark scenes.
+      WebkitTextStroke: "4px #000000",
+      paintOrder: "stroke fill",
+      textShadow: "0 6px 18px rgba(0,0,0,0.85)",
     }}>
       {text}
     </p>

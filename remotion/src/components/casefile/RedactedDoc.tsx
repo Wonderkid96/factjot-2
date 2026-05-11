@@ -90,7 +90,7 @@ export function RedactedDoc({
         <p
           style={{
             color: "#2a1c10",
-            fontFamily: "Courier Prime, Courier New, monospace",
+            fontFamily: "IBM Plex Mono, Courier New, monospace",
             fontSize: 44,
             lineHeight: 1.55,
             margin: 0,

@@ -82,7 +82,13 @@ export function SceneRenderer({
     case "archive_film":
       return <ArchiveFilm src={src} isVideo={isVideo} />;
     case "map_pin":
-      return <MapPin src={src} isVideo={isVideo} locationLabel={locationLabel} />;
+      return (
+        <MapPin
+          src={src}
+          isVideo={isVideo}
+          locationLabel={locationLabel ?? deriveLocationLabel(beatText)}
+        />
+      );
     case "red_thread":
       if (!priorSrc) {
         return <Polaroid src={src} isVideo={isVideo} />;
@@ -109,6 +115,17 @@ function deriveStampText(beatText: string): string {
   }
   const verdicts = ["FILED", "CONFIRMED", "ON RECORD", "VERIFIED"];
   return verdicts[beatText.length % verdicts.length];
+}
+
+// Try to detect a place-name from the beat. We look for capitalised tokens
+// after "in" / "at" / "from" / "to" — the simplest heuristic that catches
+// "in Hiroshima", "to Nagasaki", "at Versailles". Falls back to "On Record".
+function deriveLocationLabel(beatText: string): string {
+  const m = beatText.match(/\b(?:in|at|from|to)\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)/);
+  if (m && m[1].length >= 3 && m[1].length <= 30) {
+    return m[1];
+  }
+  return "On Record";
 }
 
 // Pull a short masthead-style headline from the beat. Used as the newspaper

@@ -62,7 +62,7 @@ export function IndexCard({ text, typeDurationFrames = 30 }: IndexCardProps) {
         <p
           style={{
             color: "#2a1c10",
-            fontFamily: "Courier Prime, Courier New, monospace",
+            fontFamily: "IBM Plex Mono, Courier New, monospace",
             fontSize: 52,
             lineHeight: "68px",
             margin: 0,

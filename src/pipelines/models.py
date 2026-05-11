@@ -46,6 +46,17 @@ SceneTreatment = Literal[
 ]
 
 
+# Rich-animation primitives the agent can OPTIONALLY layer on top of the
+# base scene_treatment. Empty/None = base treatment renders alone. Each
+# primitive owns a typed params shape — the renderer validates and the
+# Remotion component reads them. See remotion/src/components/casefile/
+# animations/ for the implementations.
+AnimationType = Literal[
+    "counter",       # tick from `from` to `to`, optionally with `unit` suffix
+    # Future: comparison, timeline, pull_quote, chart, map_focus
+]
+
+
 class Beat(BaseModel):
     text: str
     visual_brief: VisualBrief | dict = Field(default_factory=dict)
@@ -54,6 +65,13 @@ class Beat(BaseModel):
     # full-bleed Ken Burns treatment when the writer omits or the renderer
     # can't satisfy the chosen treatment (e.g. red_thread on beat 0).
     scene_treatment: SceneTreatment = "ken_burns"
+    # Optional rich-animation overlay. The agent only emits this when the
+    # beat content clearly fits one of the closed-set primitives — e.g. a
+    # beat about "70,000 deaths" can carry {"type": "counter", "to": 70000,
+    # "unit": "dead"}. Kept as a dict (not a discriminated Pydantic union)
+    # so adding a new primitive type is a one-place change. Validated by
+    # script_writer._scrub_script before reaching the renderer.
+    animation: dict | None = None
 
 
 class PostMetadata(BaseModel):

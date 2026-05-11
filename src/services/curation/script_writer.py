@@ -133,6 +133,49 @@ Each beat carries a `scene_treatment` from a CLOSED set. You are the art directo
 - Beat 0 introduces the subject — usually `polaroid` (person), `map_pin` (place), or `index_card` (a sharp number).
 - Use `stamp_reveal` ONLY if you put a year or number in the beat text. Otherwise it falls back to a generic plate and reads as random.
 
+# RICH ANIMATIONS — OPTIONAL OVERLAY
+
+Each beat can OPTIONALLY include an `animation` field that adds a rich
+motion-graphic overlay on top of the base scene_treatment. ONLY emit this
+field when the beat content unambiguously fits one of the named primitives.
+If nothing clearly fits, OMIT the field entirely — the base treatment will
+carry the beat fine on its own. Better to skip than to force.
+
+**Available primitives:**
+
+- `counter` — a big number that ticks up dramatically over ~2 seconds.
+  Use this when the beat's punchline is a specific large quantity:
+  casualty counts, distances, percentages, time durations, populations,
+  money amounts. The number must be IN the beat text. Do NOT invent
+  numbers the script doesn't already mention.
+
+  Shape:
+  ```
+  "animation": {{
+    "type": "counter",
+    "from": 0,
+    "to": 70000,
+    "unit": "dead"           // optional suffix shown after the number
+  }}
+  ```
+
+  Good examples:
+  - Beat: "The blast killed seventy thousand people instantly."
+    → `{{ "type": "counter", "from": 0, "to": 70000, "unit": "dead" }}`
+  - Beat: "Mount Everest rises eight thousand eight hundred metres."
+    → `{{ "type": "counter", "from": 0, "to": 8848, "unit": "metres" }}`
+  - Beat: "Only 12 humans have walked on the moon."
+    → `{{ "type": "counter", "from": 0, "to": 12, "unit": "humans" }}`
+
+  Bad examples (do NOT emit):
+  - Beat: "Yamaguchi survived both atomic bombings." → no specific number
+  - Beat: "Many soldiers died in the trenches." → "many" is not a number
+  - Beat: "He lived for over a year afterwards." → "over a year" is vague
+
+**Rule of thumb:** if you cannot extract one exact integer from the beat
+text, do not pick counter. Future primitives will follow the same rule —
+the renderer pulls values from the script, never invents them.
+
 Return ONLY the JSON. No prose around it.
 """
 
@@ -164,12 +207,62 @@ def _strip_banned_punctuation(text: str) -> str:
     )
 
 
+VALID_ANIMATIONS = {"counter"}
+
+
+def _scrub_animation(anim: dict | None, beat_text: str, beat_index: int) -> dict | None:
+    """Validate the optional `animation` field. If it's malformed or its
+    referenced value can't be cross-checked against the beat text, drop it
+    rather than letting the renderer fail or invent a number.
+    """
+    if not anim or not isinstance(anim, dict):
+        return None
+    atype = anim.get("type")
+    if atype not in VALID_ANIMATIONS:
+        log.info("animation_unknown_type", beat_index=beat_index, got=atype)
+        return None
+    if atype == "counter":
+        # Validate shape: from + to must be numeric, to > 0.
+        try:
+            from_val = int(anim.get("from", 0))
+            to_val = int(anim["to"])
+        except (KeyError, TypeError, ValueError):
+            log.info("animation_counter_bad_shape", beat_index=beat_index)
+            return None
+        if to_val <= 0:
+            return None
+        # Cross-check: the `to` value MUST appear somewhere in the beat
+        # text (digits, with optional commas). This is the "agent must
+        # never invent numbers" guard — if the script doesn't say it,
+        # the counter doesn't show it.
+        beat_digits = beat_text.replace(",", "").replace(".", "")
+        to_str = str(to_val)
+        # Allow round-number matches too (e.g. "70,000" in text matches to=70000)
+        if to_str not in beat_digits:
+            # Try common spelled-out fallbacks: "seventy thousand" → 70000
+            log.info("animation_counter_value_not_in_text",
+                     beat_index=beat_index, to=to_val,
+                     text_preview=beat_text[:80])
+            return None
+        unit = anim.get("unit")
+        if unit is not None and not isinstance(unit, str):
+            unit = None
+        return {
+            "type": "counter",
+            "from": from_val,
+            "to": to_val,
+            "unit": unit,
+        }
+    return None
+
+
 def _scrub_script(data: dict) -> dict:
     """Walk every voice-facing string and strip banned punctuation.
 
     Also validates `scene_treatment` per beat. If the writer omitted one or
     picked a treatment the renderer doesn't know, fall back to ken_burns so
-    the renderer never has to handle a missing-or-unknown enum.
+    the renderer never has to handle a missing-or-unknown enum. Validates
+    optional `animation` overlay shape per beat.
     """
     for key in ("hook", "cta", "title"):
         if key in data and isinstance(data[key], str):
@@ -184,6 +277,8 @@ def _scrub_script(data: dict) -> dict:
         # red_thread on beat 0 has nothing to connect to — push to polaroid.
         if idx == 0 and beat["scene_treatment"] == "red_thread":
             beat["scene_treatment"] = "polaroid"
+        # Validate the optional animation overlay.
+        beat["animation"] = _scrub_animation(beat.get("animation"), beat.get("text", ""), idx)
     return data
 
 

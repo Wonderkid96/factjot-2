@@ -9,6 +9,7 @@ import { YearAccent } from "../components/YearAccent";
 import { palette } from "../style/tokens";
 import { Desk } from "../components/casefile/Desk";
 import { SceneRenderer, SceneTreatment } from "../components/casefile/SceneRenderer";
+import { Counter } from "../components/casefile/animations/Counter";
 
 // CaseFileReel — case-file aesthetic variant of FactReel. Same audio,
 // captions, chrome. Every beat renders via SceneRenderer instead of
@@ -67,6 +68,16 @@ export const caseFileReelSchema = z.object({
       path: z.string().nullable(),
       source: z.string().nullable(),
     }),
+    // Optional rich-animation overlay — see src/pipelines/models.py.
+    // Validated upstream so we only need to support known shapes here.
+    animation: z.discriminatedUnion("type", [
+      z.object({
+        type: z.literal("counter"),
+        from: z.number(),
+        to: z.number(),
+        unit: z.string().nullable().optional(),
+      }),
+    ]).nullable().optional(),
   })),
 });
 
@@ -307,21 +318,11 @@ export const CaseFileReel: React.FC<z.infer<typeof caseFileReelSchema>> = ({
   const INTRO_FRAMES = Math.floor(fps * INTRO_DURATION_S);
   const narrationDelay = narration_offset_frames ?? 0;
 
-  // 2-second fades on both ends for narration AND music. Each takes a frame
-  // (within its own Sequence's local time) and returns 0..1 volume.
+  // Music gets a 2-second fade in/out so the bed doesn't slam in or cut out.
+  // Narration plays at full volume the whole time — fading the voice itself
+  // sounds like a dead mic at the start of the hook.
   const FADE_FRAMES = Math.floor(fps * 2);
-  const NARRATION_PEAK = 1.0;
   const MUSIC_PEAK = 0.07;
-  // Narration: lives inside a Sequence from `narrationDelay`, so its local
-  // frame=0 = audio start. We don't know its exact length here (Remotion
-  // reads it from the file), so we fade in over the first 2s and trust
-  // Remotion's tail to handle the fade out via the music+outro mix.
-  const narrationVolume = (f: number) => {
-    const fadeIn = Math.min(1, f / FADE_FRAMES);
-    return NARRATION_PEAK * Math.max(0, fadeIn);
-  };
-  // Music: lives at composition-level time, fades in over first 2s and out
-  // over the last 2s before outroEnd. Total reel timeline drives the fade-out.
   const musicVolume = (f: number) => {
     const fadeIn = Math.min(1, f / FADE_FRAMES);
     const fadeOut = Math.min(1, Math.max(0, (outroEnd - f) / FADE_FRAMES));
@@ -338,7 +339,7 @@ export const CaseFileReel: React.FC<z.infer<typeof caseFileReelSchema>> = ({
 
       {narration_audio && (
         <Sequence from={narrationDelay}>
-          <Audio src={narration_audio} volume={narrationVolume} />
+          <Audio src={narration_audio} />
         </Sequence>
       )}
       {music_audio && (
@@ -377,6 +378,16 @@ export const CaseFileReel: React.FC<z.infer<typeof caseFileReelSchema>> = ({
               priorSrc={priorSrc}
               priorIsVideo={priorIsVideo}
             />
+            {/* Rich-animation overlay (optional). Sits on top of the scene
+                treatment with its own dim backdrop — designed to be the
+                dominant element while playing. */}
+            {beat.animation?.type === "counter" && (
+              <Counter
+                from={beat.animation.from}
+                to={beat.animation.to}
+                unit={beat.animation.unit ?? null}
+              />
+            )}
           </Sequence>
         );
       })}

@@ -420,6 +420,10 @@ def build_video_spec(
                 # component renders this beat (polaroid, evidence_slide, etc.).
                 # FactReel ignores the field — it renders every beat the same way.
                 "scene_treatment": getattr(b, "scene_treatment", "ken_burns"),
+                # Optional rich-animation overlay (counter, …) — None if the
+                # agent didn't opt in for this beat. Renderer treats null as
+                # "no overlay" and falls through to the base treatment.
+                "animation": getattr(b, "animation", None),
                 "asset": {
                     "path": asset_url(asset_by_beat[i].local_path) if i in asset_by_beat else None,
                     "source": asset_by_beat[i].provider if i in asset_by_beat else None,

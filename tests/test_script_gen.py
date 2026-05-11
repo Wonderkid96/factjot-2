@@ -44,6 +44,61 @@ def test_scrub_script_rewrites_red_thread_on_beat_zero():
     assert out["beats"][0]["scene_treatment"] == "polaroid"
 
 
+# --- animation overlay -----------------------------------------------------
+
+def _beat_with_anim(text: str, anim: dict | None) -> dict:
+    b = _beat(text, "polaroid")
+    if anim is not None:
+        b["animation"] = anim
+    return b
+
+
+def test_scrub_animation_passes_counter_when_value_in_text():
+    data = {"hook": "h", "cta": "c", "title": "t", "beats": [
+        _beat_with_anim("The blast killed 70,000 people instantly.",
+                        {"type": "counter", "from": 0, "to": 70000, "unit": "dead"}),
+    ]}
+    out = _scrub_script(data)
+    assert out["beats"][0]["animation"] == {
+        "type": "counter", "from": 0, "to": 70000, "unit": "dead",
+    }
+
+
+def test_scrub_animation_drops_counter_when_value_not_in_text():
+    """Agent must NOT invent numbers — if `to` doesn't appear in beat text,
+    drop the animation rather than letting the renderer lie."""
+    data = {"hook": "h", "cta": "c", "title": "t", "beats": [
+        _beat_with_anim("Many people died in the blast.",
+                        {"type": "counter", "from": 0, "to": 70000, "unit": "dead"}),
+    ]}
+    out = _scrub_script(data)
+    assert out["beats"][0]["animation"] is None
+
+
+def test_scrub_animation_drops_unknown_type():
+    data = {"hook": "h", "cta": "c", "title": "t", "beats": [
+        _beat_with_anim("Some fact.", {"type": "fancy_3d_explosion", "intensity": 11}),
+    ]}
+    out = _scrub_script(data)
+    assert out["beats"][0]["animation"] is None
+
+
+def test_scrub_animation_drops_malformed_counter():
+    data = {"hook": "h", "cta": "c", "title": "t", "beats": [
+        _beat_with_anim("Mount Everest is 8848 metres tall.",
+                        {"type": "counter", "to": "eight thousand"}),  # non-numeric
+    ]}
+    out = _scrub_script(data)
+    assert out["beats"][0]["animation"] is None
+
+
+def test_scrub_animation_none_remains_none():
+    data = {"hook": "h", "cta": "c", "title": "t",
+            "beats": [_beat("just a normal beat", "polaroid")]}
+    out = _scrub_script(data)
+    assert out["beats"][0]["animation"] is None
+
+
 def test_scrub_script_preserves_valid_treatments():
     data = {
         "hook": "h", "cta": "c", "title": "t",

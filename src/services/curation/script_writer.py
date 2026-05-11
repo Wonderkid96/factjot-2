@@ -127,11 +127,17 @@ Each beat carries a `scene_treatment` from a CLOSED set. You are the art directo
 
 - `ken_burns` — full-bleed colour with slow zoom. Identical to `polaroid` in current rendering; pick whichever name feels right for the beat.
 
-**Picking rules:**
+**Picking rules — strict:**
 - Variety matters. Don't pick the same treatment for all four beats; mix at least 3 different treatments per script.
 - Match the EMOTIONAL beat to the treatment, not the literal noun.
-- Beat 0 introduces the subject — usually `polaroid` (person), `map_pin` (place), or `index_card` (a sharp number).
-- Use `stamp_reveal` ONLY if you put a year or number in the beat text. Otherwise it falls back to a generic plate and reads as random.
+- **`ken_burns` is the safe default.** If a beat doesn't unambiguously fit one of the specific treatments below, USE `ken_burns`. Don't pick a richer treatment just for variety — every pick should have a reason you can name in one sentence.
+- `redacted_doc` ONLY when the beat is genuinely about secrecy, cover-up, classified info, suppression, or hidden facts. NOT for emphasis. NOT just because the previous beats were image-heavy.
+- `stamp_reveal` ONLY when the beat contains a 4-digit year or a 3+ digit number you want to land. If no year/number, do not pick.
+- `red_thread` ONLY for callback beats that explicitly tie back to an earlier beat's subject. NOT for "this is a connection in general".
+- `archive_film` ONLY for pre-1970s content. Modern footage shouldn't be B&W-graded just for vibes.
+- `index_card` ONLY when the beat is a tight quote, number, or fact that's stronger AS text than with an image. Use sparingly — defaults to text-on-black, which feels static if overused.
+- Beat 0 introduces the subject — usually `polaroid` (person/place/object), `map_pin` (specific location), `newsprint_clip` (press-covered event), or `ken_burns` (default).
+- Beat 3 lands the consequence. STOP picking `stamp_reveal` or `redacted_doc` here by default — pick whatever fits the actual content. `ken_burns` over a strong final asset is often the right call.
 
 # RICH ANIMATIONS — OPTIONAL OVERLAY
 
@@ -282,7 +288,29 @@ def _scrub_script(data: dict) -> dict:
     return data
 
 
-def generate_script(topic: str, angle: str) -> Script:
+def _format_recent_treatments(recent: list[list[str]] | None) -> str:
+    if not recent:
+        return ""
+    lines = []
+    for i, ts in enumerate(recent):
+        lines.append(f"- Reel {i+1} ago: {' → '.join(ts)}")
+    return (
+        "\n# RECENT REEL HISTORY — AVOID REPETITION\n"
+        "Your last few reels used these treatment sequences:\n"
+        + "\n".join(lines)
+        + "\n\nPick a DIFFERENT mix this time. If you're tempted to use a treatment "
+          "that appears in 3+ of the last 5 reels, choose something else unless "
+          "the beat content genuinely demands it (e.g. don't pick `redacted_doc` "
+          "just because the last reel did; pick it only if the beat is about "
+          "secrecy/cover-up/hidden info).\n"
+    )
+
+
+def generate_script(
+    topic: str,
+    angle: str,
+    recent_treatments: list[list[str]] | None = None,
+) -> Script:
     if os.getenv("FACTJOT_FROZEN") == "1":
         raise FrozenModeViolation(
             "generate_script() called while FACTJOT_FROZEN=1. Use the fixture's "
@@ -290,7 +318,13 @@ def generate_script(topic: str, angle: str) -> Script:
             "want to hit Anthropic."
         )
     sys = SYSTEM_PROMPT.format(style_guide=_load_style_guide())
-    user = f"Write a Fact Jot reel script about: {topic}\nAngle: {angle}\n\nReturn JSON only."
+    history = _format_recent_treatments(recent_treatments)
+    user = (
+        f"Write a Fact Jot reel script about: {topic}\n"
+        f"Angle: {angle}\n"
+        f"{history}\n"
+        "Return JSON only."
+    )
     raw = _call_writer(sys, user)
     try:
         data = json.loads(extract_json(raw))

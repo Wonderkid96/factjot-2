@@ -19,6 +19,7 @@ from src.pipelines.models import (
     Brief, Script, MediaSet, MediaAsset, Verification, Platform, VisualBrief, Citation
 )
 from src.services.curation.script_writer import generate_script
+from src.services.curation.shock_scorer import score_candidates
 from src.services.discovery.models import DiscoveredCandidate
 from src.services.discovery.orchestrator import discover_candidates
 from src.services.narration.elevenlabs import ElevenLabsNarrator, NarrationResult
@@ -86,33 +87,39 @@ class ReelEvergreenPipeline(Pipeline):
         return {r["dedupe_key"] for r in recent if "dedupe_key" in r}
 
     def _pick_topic(self, candidates: list[DiscoveredCandidate]) -> DiscoveredCandidate | None:
-        """First-passing pick: walk candidates highest-upvotes-down and return
-        the first one that passes fact-checking. If NO candidate passes the
-        full check, fall back to the highest-upvote candidate that at least
-        gathered ≥2 sources — better to ship a "could not fully verify" reel
-        than to fail the run entirely, since the gate's strictness depends on
-        source-snippet quality (we currently send URL + topic text, not the
-        actual fetched article body). Hard rejections (zero sources, complete
-        nonsense) still fail the run.
+        """Multi-stage pick: shock-value-score the top-N upvote candidates,
+        then walk them in shock-rank order, fact-checking each. First fully-
+        verified candidate wins. If nothing fully verifies, fall back to the
+        highest-shock candidate that gathered ≥2 sources. This replaces the
+        "pure upvotes" rank — Reddit upvotes proxy for popular, not shocking.
         """
         recent = self._recent_dedupe_keys()
         fresh = [c for c in candidates if c.dedupe_key not in recent]
         if not fresh:
             return None
         fresh.sort(key=lambda c: c.upvotes, reverse=True)
+        # Score top-25 by shock value via Haiku (~$0.001 per reel).
+        scored = score_candidates(fresh, max_to_score=25)
+        for sc in scored[:5]:
+            log.info("shock_scored",
+                     score=sc.shock_score, upvotes=sc.candidate.upvotes,
+                     reason=sc.reason[:80], topic=sc.candidate.text[:80])
+        # Walk shock-ranked candidates fact-checking each.
         best_fallback: tuple[DiscoveredCandidate, VerificationResult] | None = None
-        for c in fresh[:15]:
+        for sc in scored[:15]:
+            c = sc.candidate
             result = self._fact_check_candidate(c)
             if result.verified:
+                log.info("topic_picked_verified",
+                         shock=sc.shock_score, confidence=result.confidence,
+                         topic=c.text[:80])
                 self._fact_check = result
                 return c
             log.info("topic_rejected",
-                     topic=c.text[:80], reason=result.reason[:120],
+                     topic=c.text[:80], shock=sc.shock_score,
+                     reason=result.reason[:120],
                      confidence=result.confidence,
                      sources_gathered=len(self._fact_check_sources))
-            # Remember the highest-upvote candidate that at least gathered
-            # some sources, even if the judge wasn't convinced. Used only
-            # when nothing fully verifies.
             if best_fallback is None and len(self._fact_check_sources) >= 2:
                 best_fallback = (c, result)
 
@@ -122,12 +129,25 @@ class ReelEvergreenPipeline(Pipeline):
                         topic=c.text[:80],
                         confidence=result.confidence,
                         reason=result.reason[:120])
-            # Re-run the gather for THIS candidate so _fact_check_sources is
-            # populated correctly for downstream verify() use.
             self._fact_check_candidate(c)
-            self._fact_check = result  # carries verified=False but lets pipeline continue
+            self._fact_check = result
             return c
         return None
+
+    @staticmethod
+    def _recent_treatments() -> list[list[str]]:
+        """Pull scene_treatment sequences from the last N posted entries
+        so the script_writer can be told what NOT to repeat. Returns a list
+        of beat-treatment lists; the writer collapses to "recently used:
+        X, Y, Z" and prefers different picks.
+        """
+        recent = ledgers.read_all(POSTED_LEDGER)[-5:]
+        out: list[list[str]] = []
+        for r in recent:
+            ts = r.get("scene_treatments")
+            if isinstance(ts, list):
+                out.append([str(t) for t in ts])
+        return out
 
     def _fact_check_candidate(self, c: DiscoveredCandidate) -> VerificationResult:
         """Gather sources and ask the LLM judge whether the claim is supported.
@@ -205,7 +225,20 @@ class ReelEvergreenPipeline(Pipeline):
         )
 
     def generate(self, brief: Brief) -> Script:
-        return generate_script(topic=brief.topic, angle=brief.angle)
+        recent = self._recent_treatments()
+        script = generate_script(
+            topic=brief.topic,
+            angle=brief.angle,
+            recent_treatments=recent,
+        )
+        # Record the treatments we just used so the next reel's prompt can
+        # tell the agent what to avoid repeating.
+        ledgers.append(POSTED_LEDGER, {
+            "topic": brief.topic[:160],
+            "scene_treatments": [b.scene_treatment for b in script.beats],
+            "_treatment_record": True,
+        })
+        return script
 
     def acquire_media(self, script: Script) -> MediaSet:
         self._ensure_run_id(script.title)

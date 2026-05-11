@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 from src.core.logger import get_logger
 from src.pipelines.registry import get_pipeline
@@ -24,7 +25,24 @@ def main() -> int:
         help="Copy narration.mp3 + alignment from a prior run dir instead of calling ElevenLabs. "
              "Cuts ~$0.10 from the per-run cost when iterating on visuals only.",
     )
+    parser.add_argument(
+        "--frozen",
+        default=None,
+        metavar="FIXTURE",
+        help="Replay a frozen fixture (tests/fixtures/<FIXTURE>/) through Remotion only. "
+             "Skips Anthropic + ElevenLabs + asset sourcing entirely. $0 in product API spend.",
+    )
     args = parser.parse_args()
+
+    # --frozen short-circuits the entire normal pipeline. Set the env guard
+    # FIRST so any accidental import path that touches ElevenLabs / Anthropic
+    # raises rather than silently hitting a paid endpoint.
+    if args.frozen:
+        os.environ["FACTJOT_FROZEN"] = "1"
+        from src.runner.frozen import render_from_fixture
+        output = render_from_fixture(args.frozen, args.pipeline)
+        log.info("frozen_done", output=str(output))
+        return 0
 
     log.info("pipeline_start", pipeline=args.pipeline, dry_run=args.dry_run,
              topic_override=bool(args.topic), reuse_narration=bool(args.reuse_narration_from))

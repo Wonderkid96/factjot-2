@@ -7,7 +7,7 @@ def test_pipeline_metadata():
     assert p.name == "reel_evergreen"
     assert Platform.INSTAGRAM in p.target_platforms
     assert Platform.YOUTUBE_SHORTS in p.target_platforms
-    assert p.remotion_composition == "FactReel"
+    assert p.remotion_composition == "CaseFileReel"
 
 
 def test_pipeline_run_id_stable_across_stages():

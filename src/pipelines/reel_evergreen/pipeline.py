@@ -36,6 +36,8 @@ log = get_logger("pipelines.reel_evergreen")
 POSTED_LEDGER = "posted.jsonl"
 RECENT_TOPIC_WINDOW = 90  # last N entries treated as "recent" for dedup
 INTRO_OVERLAY_PATH = BRAND_DIR / "intros" / "factjot_intro.mov"
+MUSIC_PATH = BRAND_DIR / "music" / "default.mp3"
+GRIT_OVERLAY_PATH = BRAND_DIR / "grit" / "film-grain.mov"
 
 
 class ReelEvergreenPipeline(Pipeline):
@@ -43,7 +45,7 @@ class ReelEvergreenPipeline(Pipeline):
     output_format = "reel"
     target_platforms = [Platform.INSTAGRAM, Platform.YOUTUBE_SHORTS]
     brand_format = "reel_overlay"
-    remotion_composition = "FactReel"
+    remotion_composition = "CaseFileReel"
 
     def __init__(self) -> None:
         self.run_id: str | None = None
@@ -252,6 +254,12 @@ class ReelEvergreenPipeline(Pipeline):
         # serves it. FactReel.tsx falls back gracefully if the file is missing.
         if INTRO_OVERLAY_PATH.exists():
             shutil.copy2(INTRO_OVERLAY_PATH, rc.dir / "intro.mov")
+        # Stage the background music too (V1's default.mp3 at 20% under VO).
+        if MUSIC_PATH.exists():
+            shutil.copy2(MUSIC_PATH, rc.dir / "music.mp3")
+        # Stage V1's film-grain overlay so Remotion screen-blends it on top.
+        if GRIT_OVERLAY_PATH.exists():
+            shutil.copy2(GRIT_OVERLAY_PATH, rc.dir / "grit.mov")
 
         video_path = render_via_remotion(script, media, rc.video_path, composition_id=self.remotion_composition)
 

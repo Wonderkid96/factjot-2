@@ -83,36 +83,6 @@ export function useImpactBounce(delay = 0): number {
   });
 }
 
-// ---------- Slide-in helper ----------
-
-// Returns an entry transform string: translate from `(fromX, fromY)` to (0, 0)
-// with a small rotation drift and an opacity fade across `durationFrames`.
-export function useSlideIn(
-  fromX: number,
-  fromY: number,
-  fromRotate: number,
-  durationFrames = 18,
-  delay = 0,
-): { transform: string; opacity: number } {
-  const frame = useCurrentFrame();
-  const local = Math.max(0, frame - delay);
-  const eased = interpolate(local, [0, durationFrames], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-    easing: Easing.out(Easing.cubic),
-  });
-  const x = interpolate(eased, [0, 1], [fromX, 0]);
-  const y = interpolate(eased, [0, 1], [fromY, 0]);
-  const rot = interpolate(eased, [0, 1], [fromRotate, 0]);
-  const opacity = interpolate(eased, [0, 0.6], [0, 1], {
-    extrapolateRight: "clamp",
-  });
-  return {
-    transform: `translate(${x}px, ${y}px) rotate(${rot}deg)`,
-    opacity,
-  };
-}
-
 // ---------- Subtle hand wobble ----------
 
 // Tiny per-frame jitter to simulate a hand-held element. Use sparingly —

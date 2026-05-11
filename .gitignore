@@ -37,3 +37,7 @@ runs/
 # Editor
 .vscode/
 .idea/
+
+# ── Brand reference docs (kept locally, never committed) ──────────
+# No leading slash = matches at any depth.
+style-guide-*.pdf

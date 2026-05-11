@@ -83,68 +83,26 @@ function isVideoUrl(p: string | null): boolean {
   return p.endsWith(".mp4") || p.endsWith(".webm") || p.endsWith(".mov");
 }
 
-// ---------- Caption (identical to FactReel) ----------
+// ---------- Caption (plain block, no karaoke) ----------
 
-interface ChunkWord {
-  text: string;
-  start_frame: number;
-  end_frame: number;
-  emphasis?: boolean;
-}
-
-function ChunkCaption({
-  text, words, chunkStart,
-}: {
-  text: string;
-  words?: ChunkWord[];
-  chunkStart: number;
-}) {
-  const frame = useCurrentFrame();
-  const baseStyle: React.CSSProperties = {
-    color: "#FFFFFF",
-    fontFamily: "Space Grotesk",
-    fontWeight: 700,
-    fontSize: 64,
-    lineHeight: 1.15,
-    letterSpacing: "-0.005em",
-    margin: 0,
-    textAlign: "center",
-    textShadow: "0 4px 18px rgba(0,0,0,0.85), 0 0 8px rgba(0,0,0,0.6)",
-  };
-
-  if (!words || words.length === 0) {
-    return <p style={baseStyle}>{text}</p>;
-  }
-
+// Karaoke per-word colour flip was distracting + the timing never lined up
+// cleanly with the encoded audio. Captions now render as a single white block
+// per chunk — the text appears, the narrator says it, the text leaves. The
+// word/emphasis fields are accepted but ignored.
+function ChunkCaption({ text }: { text: string }) {
   return (
-    <p style={baseStyle}>
-      {words.map((w, i) => {
-        const localStart = w.start_frame - chunkStart;
-        const localEnd = w.end_frame - chunkStart;
-        const isActive = frame >= localStart && frame < localEnd;
-        const emphasisScale = w.emphasis
-          ? interpolate(
-              frame,
-              [localStart - 4, localStart + 2, Math.min(localEnd, localStart + 14)],
-              [1.0, 1.14, 1.0],
-              { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
-            )
-          : 1.0;
-        const color = isActive ? palette.accent : "#FFFFFF";
-        return (
-          <span key={`w-${i}`} style={{
-            color,
-            display: "inline-block",
-            transform: `scale(${emphasisScale})`,
-            transformOrigin: "center center",
-            transition: "color 80ms linear",
-            marginRight: i < words.length - 1 ? (w.emphasis ? "0.38em" : "0.26em") : 0,
-            marginLeft: w.emphasis ? "0.06em" : 0,
-          }}>
-            {w.text}
-          </span>
-        );
-      })}
+    <p style={{
+      color: "#FFFFFF",
+      fontFamily: "Space Grotesk",
+      fontWeight: 700,
+      fontSize: 64,
+      lineHeight: 1.15,
+      letterSpacing: "-0.005em",
+      margin: 0,
+      textAlign: "center",
+      textShadow: "0 4px 18px rgba(0,0,0,0.85), 0 0 8px rgba(0,0,0,0.6)",
+    }}>
+      {text}
     </p>
   );
 }
@@ -301,55 +259,9 @@ function AmbientLayer({ src, durationInFrames }: { src?: string | null; duration
   );
 }
 
-// ---------- Scrappy mission-brief stage ----------
-
-// Per-beat stage offsets — each scene sits in a deliberately slightly-off
-// position so as the four beats accumulate they read as a *stack* of related
-// items on a desk rather than four identical centred renders. The offsets
-// alternate left/right and creep down the frame so each new beat covers
-// part of the previous ones, but enough of each prior beat peeks out to be
-// recognisable. Indices wrap mod-4 so beat counts >4 still get variety.
-const STAGE_OFFSETS: Array<{ x: number; y: number; rotation: number }> = [
-  { x: -70, y: -180, rotation: -3.0 },
-  { x:  80, y: -110, rotation:  2.4 },
-  { x: -50, y:  -30, rotation: -1.8 },
-  { x:  60, y:  -90, rotation:  1.6 },
-];
-
-// Whole-stage zoom — the "camera leaning in" feel for the mission-brief look.
-// 1.06 is enough to feel intimate without clipping critical scene content.
-const STAGE_SCALE = 1.06;
-
-// Opacity of a prior beat after the next one has taken over. Visible enough
-// to read as a stacked layer, dim enough that the eye lands on the current
-// beat. 14-frame crossfade so the handoff is felt, not seen.
-const FROZEN_OPACITY = 0.42;
-const FADE_FRAMES = 14;
-
-interface StageProps {
-  offset: { x: number; y: number; rotation: number };
-  /** How many frames this scene is the ACTIVE one. After that it freezes at FROZEN_OPACITY. */
-  activeFrames: number;
-  children: React.ReactNode;
-}
-
-function Stage({ offset, activeFrames, children }: StageProps) {
-  const frame = useCurrentFrame();
-  const opacity = interpolate(
-    frame,
-    [activeFrames - FADE_FRAMES, activeFrames],
-    [1.0, FROZEN_OPACITY],
-    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
-  );
-  return (
-    <AbsoluteFill style={{
-      transform: `translate(${offset.x}px, ${offset.y}px) rotate(${offset.rotation}deg)`,
-      opacity,
-    }}>
-      {children}
-    </AbsoluteFill>
-  );
-}
+// (scrappy stage code removed — scenes now render one-at-a-time at their
+//  natural centred position, and prior beats accumulate as a corner thumbnail
+//  stack via EvidenceStack at full opacity.)
 
 // ---------- Composition ----------
 
@@ -390,48 +302,50 @@ export const CaseFileReel: React.FC<z.infer<typeof caseFileReelSchema>> = ({
         <Hook text={hook} />
       </Sequence>
 
-      {/* Stage container — scale-zoomed for the "leaned-in mission brief" feel.
-          Each beat's Sequence persists from its start through outroStart so
-          prior beats remain visible (faded) behind the current one, giving
-          the scrappy stacked-evidence look. */}
-      <AbsoluteFill style={{
-        transform: `scale(${STAGE_SCALE})`,
-        transformOrigin: "center 42%",
-      }}>
-        {beats.map((beat, i) => {
-          const path = beat.asset?.path ?? null;
-          const isVideo = isVideoUrl(path);
-          const nextStart = i + 1 < beats.length ? beats[i + 1].start_frame : outroStart;
-          // Length of THIS beat as "active" before the next one takes over.
-          const activeFrames = Math.max(nextStart - beat.start_frame, fps);
-          // Sequence runs all the way to outroStart so prior beats stay on
-          // screen (at FROZEN_OPACITY) until the outro begins.
-          const sequenceLength = Math.max(outroStart - beat.start_frame, fps);
-          const priorBeat = i > 0 ? beats[i - 1] : null;
-          const priorSrc = priorBeat?.asset?.path ?? null;
-          const priorIsVideo = isVideoUrl(priorSrc);
-          const offset = STAGE_OFFSETS[i % STAGE_OFFSETS.length];
+      {/* Per-beat scenes — each beat shows for its own window only. Prior
+          beats DO NOT persist as faded layers; they're surfaced via the
+          corner EvidenceStack below at full opacity. */}
+      {beats.map((beat, i) => {
+        const path = beat.asset?.path ?? null;
+        const isVideo = isVideoUrl(path);
+        const isLast = i === beats.length - 1;
+        const naturalDuration = Math.max(beat.end_frame - beat.start_frame, fps);
+        // Last beat extends through CTA + outro so we don't cut to bare desk.
+        const extendedEnd = isLast ? Math.max(outroEnd, beat.end_frame) : beat.end_frame;
+        const duration = Math.max(extendedEnd - beat.start_frame, naturalDuration);
 
-          return (
-            <Sequence key={`scene-${i}`} from={beat.start_frame} durationInFrames={sequenceLength}>
-              <Stage offset={offset} activeFrames={activeFrames}>
-                <SceneRenderer
-                  treatment={beat.scene_treatment as SceneTreatment}
-                  src={path}
-                  isVideo={isVideo}
-                  beatText={beat.text}
-                  durationFrames={activeFrames}
-                  priorSrc={priorSrc}
-                  priorIsVideo={priorIsVideo}
-                />
-              </Stage>
-            </Sequence>
-          );
-        })}
-      </AbsoluteFill>
+        const priorBeat = i > 0 ? beats[i - 1] : null;
+        const priorSrc = priorBeat?.asset?.path ?? null;
+        const priorIsVideo = isVideoUrl(priorSrc);
 
-      {/* Caption chunks — same karaoke treatment as FactReel */}
-      {beats.flatMap((beat, i) =>
+        return (
+          <Sequence key={`scene-${i}`} from={beat.start_frame} durationInFrames={duration}>
+            <SceneRenderer
+              treatment={beat.scene_treatment as SceneTreatment}
+              src={path}
+              isVideo={isVideo}
+              beatText={beat.text}
+              durationFrames={duration}
+              priorSrc={priorSrc}
+              priorIsVideo={priorIsVideo}
+            />
+          </Sequence>
+        );
+      })}
+
+      {/* (No corner stack in the Netflix-doc layout. Each beat owns the
+           full frame; prior beats are remembered by the narration alone.) */}
+
+      {/* Caption chunks — plain white block, no karaoke. Text-only scene
+          treatments (index_card, redacted_doc) already render the beat text
+          full-screen, so suppressing captions on those beats avoids reading
+          the same words twice. */}
+      {beats.flatMap((beat, i) => {
+        const TEXT_ONLY = new Set(["index_card", "redacted_doc"]);
+        if (TEXT_ONLY.has(beat.scene_treatment)) {
+          return [];
+        }
+        return (
         ((beat.chunks ?? []).length > 0 ? (beat.chunks ?? []) : [{
           text: beat.text,
           start_frame: beat.start_frame,
@@ -450,16 +364,13 @@ export const CaseFileReel: React.FC<z.infer<typeof caseFileReelSchema>> = ({
                 paddingRight: 80,
                 pointerEvents: "none",
               }}>
-                <ChunkCaption
-                  text={chunk.text}
-                  words={chunk.words}
-                  chunkStart={chunk.start_frame}
-                />
+                <ChunkCaption text={chunk.text} />
               </AbsoluteFill>
             </Sequence>
           );
         })
-      )}
+        );
+      })}
 
       {(cta_window?.chunks ?? []).map((chunk, ci) => {
         const dur = Math.max(chunk.end_frame - chunk.start_frame, Math.floor(fps / 3));
@@ -470,7 +381,7 @@ export const CaseFileReel: React.FC<z.infer<typeof caseFileReelSchema>> = ({
               paddingTop: Math.floor(FRAME_H * CAPTION_TOP_FRACTION),
               paddingLeft: 80, paddingRight: 80, pointerEvents: "none",
             }}>
-              <ChunkCaption text={chunk.text} words={chunk.words} chunkStart={chunk.start_frame} />
+              <ChunkCaption text={chunk.text} />
             </AbsoluteFill>
           </Sequence>
         );
@@ -485,7 +396,7 @@ export const CaseFileReel: React.FC<z.infer<typeof caseFileReelSchema>> = ({
               paddingTop: Math.floor(FRAME_H * CAPTION_TOP_FRACTION),
               paddingLeft: 80, paddingRight: 80, pointerEvents: "none",
             }}>
-              <ChunkCaption text={chunk.text} words={chunk.words} chunkStart={chunk.start_frame} />
+              <ChunkCaption text={chunk.text} />
             </AbsoluteFill>
           </Sequence>
         );

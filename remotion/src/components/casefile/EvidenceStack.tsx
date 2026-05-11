@@ -55,7 +55,7 @@ export function EvidenceStack({ items, hide = false }: EvidenceStackProps) {
         const rotation = i % 2 === 0 ? -6 : 5;
         const offsetX = -i * 18;
         const offsetY = -i * 14;
-        const opacity = 0.78;
+        const opacity = 1.0;
         const lift = interpolate(enter, [0, 1], [40, 0]);
 
         return (
@@ -80,12 +80,12 @@ export function EvidenceStack({ items, hide = false }: EvidenceStackProps) {
               {it.isVideo ? (
                 <OffthreadVideo
                   src={it.src}
-                  style={{ width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(0.4)" }}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", filter: "none" }}
                 />
               ) : (
                 <Img
                   src={it.src}
-                  style={{ width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(0.4)" }}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", filter: "none" }}
                 />
               )}
             </div>

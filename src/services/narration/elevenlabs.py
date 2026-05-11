@@ -9,10 +9,11 @@ from elevenlabs.client import ElevenLabs
 from src.core.config import Settings
 
 
-# Speed multiplier applied via ffmpeg atempo (preserves pitch). Toby wanted
-# narration ~10% faster than the eleven_v3 default. atempo accepts 0.5-2.0
-# directly; 1.1 is well inside that range, no chaining needed.
-NARRATION_SPEED = 1.1
+# Speed multiplier applied via ffmpeg atempo (preserves pitch). 1.0 = no
+# change, matches V1's behaviour (V1 doesn't post-process speed at all).
+# The 1.1 we tried earlier made the same voice sound rushed + dramatic; V1's
+# natural pace reads as Netflix-doc-narrator measured.
+NARRATION_SPEED = 1.0
 
 
 class FrozenModeViolation(RuntimeError):
@@ -34,15 +35,17 @@ class ElevenLabsNarrator:
         self.settings = settings or Settings()
         self.voice_id = self.settings.elevenlabs_voice
         self.client = ElevenLabs(api_key=self.settings.elevenlabs_api_key)
-        # V1's model + voice_settings — Toby prefers this voice flow over eleven_v3.
-        # Settings ported from Insta-bot/src/render/tts_engine.py line 605-611.
-        # Tone defaults to "shocking" because Bot-2's prompt biases toward
-        # counterintuitive / dramatic hooks.
+        # V1's "curious" defaults — measured, Netflix-doc-narrator pace.
+        # V1 routes by tone (shocking / sober / wholesome / curious=default).
+        # Bot-2 used "shocking" (style 0.42, stab 0.38) which read as rushed
+        # and emotionally over-pitched even though the prompt was identical;
+        # V1's default tone is "curious" and it sounds more like a real
+        # documentary narrator. See Insta-bot/src/render/tts_engine.py:638-641.
         self.model_id = "eleven_turbo_v2_5"
         self.voice_settings = {
-            "stability": 0.38,           # shocking tone
+            "stability": 0.52,           # curious tone — V1 fallback
             "similarity_boost": 0.82,
-            "style": 0.42,               # shocking tone
+            "style": 0.22,               # curious tone — V1 fallback
             "use_speaker_boost": True,
         }
         self.speed = NARRATION_SPEED

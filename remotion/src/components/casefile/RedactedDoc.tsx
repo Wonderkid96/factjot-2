@@ -1,11 +1,15 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, interpolate, Easing } from "remotion";
 
-// "Redacted doc" — was typewritten paper page with sweeping black bars.
-// Netflix-doc rebuild: still a text-on-black moment (so it reads as a quoted
-// document), but now without the manila page; just bold mono text on pure
-// black with the same redaction-bar sweep over selected words. Reads as a
-// stylised quote-card, not a literal scan.
+// "Redacted doc" — bold typed paragraph on pure black. Selected words get an
+// inverter-matte redaction block that sweeps in left-to-right: a WHITE block
+// with `mix-blend-mode: difference` inverts the colours inside it, so the
+// surrounding black bg becomes white AND the white text becomes black. Net
+// visual: the redacted word flips to black-on-white, reads exactly like a
+// classic redaction stamp.
+//
+// The block only covers the bounds of each redacted word individually, so the
+// surrounding text stays white-on-black untouched.
 
 interface RedactedDocProps {
   text: string;
@@ -77,16 +81,24 @@ export function RedactedDoc({
             >
               {w}
               {isRedacted && (
-                <span style={{
-                  position: "absolute",
-                  top: -4,
-                  left: -4,
-                  bottom: -4,
-                  right: -4,
-                  backgroundColor: "#FFFFFF",
-                  transformOrigin: "left center",
-                  transform: `scaleX(${localSweep})`,
-                }} />
+                <span
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    top: -2,
+                    left: -4,
+                    bottom: -2,
+                    right: -4,
+                    backgroundColor: "#FFFFFF",
+                    // Inverter matte: `difference` with white flips the colours
+                    // inside the rectangle. Black bg → white panel, white text
+                    // → black text. Result: a redaction block with the word
+                    // appearing as black-on-white, exactly like real censorship.
+                    mixBlendMode: "difference",
+                    transformOrigin: "left center",
+                    transform: `scaleX(${localSweep})`,
+                  }}
+                />
               )}
             </span>
           );

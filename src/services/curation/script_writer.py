@@ -101,37 +101,37 @@ The `visual_brief` for each beat is critical — visuals are sourced from search
 
 # SCENE TREATMENT — DIRECT THE SHOT
 
-Each beat carries a `scene_treatment` from a CLOSED set. This is YOU acting as art director: choosing how the asset enters the frame, not just what asset to fetch. The renderer wraps the sourced asset in the chosen treatment, so a mediocre stock image reads as deliberate when framed as evidence on a desk.
+Each beat carries a `scene_treatment` from a CLOSED set. You are the art director: pick HOW the beat plays cinematically, not just what asset to fetch.
 
-**The brand aesthetic is "case file"**: documents slide across the desk, polaroids drop in, stamps slam down, evidence accumulates. Be cinematic. Use Ken Burns sparingly — only when the asset is genuinely too good to dress up.
+**The brand aesthetic is "Netflix documentary"**: pure black backgrounds, full-bleed footage, subtle Ken Burns, cinematic colour grading, bold typography on black. No paper, no desks, no stamps slamming down — clean, gripping, restrained. Think *Wild Wild Country*, *The Vow*, *Don't F**k With Cats*.
 
-**Treatments (use these exact strings):**
+**Treatments (use these EXACT strings):**
 
-- `polaroid` — for INTRODUCING a person, place, or specific object (someone's face, a landmark, a named thing). Photo wraps in a white border with tape, slides onto the desk with a settling rotation. Default for any beat that names a specific person.
+- `polaroid` — full-bleed colour footage of a person, place, or specific object. Slow Ken Burns + vignette. Default for any beat naming a specific person. (Name kept for back-compat; there is no actual polaroid border any more.)
 
-- `evidence_slide` — for DOCUMENT-LIKE archival material (letters, charters, blueprints, scans, paintings, manuscripts). The asset slides in from off-canvas and stops in frame. Use for "official" or "documented" beats.
+- `evidence_slide` — full-bleed asset with WARM SEPIA grade. Use for archival material (letters, paintings, scans, manuscripts) where you want a "this is old" feel.
 
-- `redacted_doc` — for SECRECY, COVER-UP, or HIDDEN INFORMATION beats. The beat text appears as a typewritten paragraph and black redaction bars sweep across key words. Pair with stories about classified info, government secrets, suppressed history.
+- `redacted_doc` — bold typed paragraph on pure black. Selected words get inverter-matte redaction blocks that sweep in left-to-right (the words flip to black, the block reads as a redaction stamp). Use for secrecy, cover-up, hidden info, declassified material, things-that-should-not-be-known beats.
 
-- `stamp_reveal` — for VERDICTS, DEADLINES, OUTCOMES, or DATES that need to land hard ("CLASSIFIED", "1968", "DECLASSIFIED", "RESOLVED"). Asset shows underneath; the stamp rotates in with overshoot. Best on beat 3 or 4 where the punchline lives.
+- `stamp_reveal` — full-bleed asset with a big bold text plate that rises up from the bottom and holds. ONLY use this when the beat contains a 4-digit year (e.g. "2009", "1968") or a punchy number — the renderer extracts a year/number for the plate. If your beat has no extractable year/number, DO NOT pick stamp_reveal.
 
-- `index_card` — for QUOTES, NUMBERS, or TIGHT FACTS. Typed monospaced text on a manila card. Use when the beat is the fact itself and the asset is decorative.
+- `index_card` — bold Archivo Black title text on pure black. The text IS the visual. Use when the beat is a tight standalone fact, a quote, or a number that should land without competing imagery.
 
-- `newsprint_clip` — for HISTORICAL EVENTS that were COVERED IN PRESS. Halftone-filtered image with a yellowed border, like a newspaper clipping pinned to the board. Use for crimes, scandals, disasters, public events.
+- `newsprint_clip` — full-bleed asset with B&W halftone-dot grade. Reads as "press archival". Use for historical events covered in press, crimes, scandals, public disasters.
 
-- `archive_film` — for OLD FOOTAGE or VINTAGE atmosphere. Black-and-white film-strip frame around the asset. Use for pre-1970s context, retro feel.
+- `archive_film` — full-bleed asset, B&W with heavier grain. Use for pre-1970s context, retro/vintage atmosphere, or when the source footage is genuinely old.
 
-- `map_pin` — for LOCATIONS. Asset displays alongside a map fragment with a push-pin drop. Use the FIRST time a place is named.
+- `map_pin` — full-bleed asset with a bottom-left LOCATION label slid in (eyebrow + place name). Use the FIRST time a specific place is named in the reel.
 
-- `red_thread` — for CONNECTIONS BETWEEN BEATS. NEVER on beat 0 (nothing to connect to). Use when this beat ties back to the previous beat's subject (same person, same place, same date).
+- `red_thread` — full-bleed colour, no special treatment. Use this for connection/callback beats where you want a clean visual that lets the narration carry the link.
 
-- `ken_burns` — the v1 fallback. Full-bleed asset with slow zoom. Reserve for when the asset is so striking it deserves the full frame.
+- `ken_burns` — full-bleed colour with slow zoom. Identical to `polaroid` in current rendering; pick whichever name feels right for the beat.
 
 **Picking rules:**
 - Variety matters. Don't pick the same treatment for all four beats; mix at least 3 different treatments per script.
 - Match the EMOTIONAL beat to the treatment, not the literal noun.
-- Beat 0 introduces the subject — usually `polaroid` (person), `evidence_slide` (document), `map_pin` (place), or `newsprint_clip` (event).
-- Beat 3 lands the consequence — often `stamp_reveal` or `redacted_doc`.
+- Beat 0 introduces the subject — usually `polaroid` (person), `map_pin` (place), or `index_card` (a sharp number).
+- Use `stamp_reveal` ONLY if you put a year or number in the beat text. Otherwise it falls back to a generic plate and reads as random.
 
 Return ONLY the JSON. No prose around it.
 """

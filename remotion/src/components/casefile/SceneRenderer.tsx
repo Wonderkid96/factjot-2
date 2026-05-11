@@ -67,14 +67,18 @@ export function SceneRenderer({
       return <EvidenceSlide src={src} isVideo={isVideo} />;
     case "redacted_doc":
       return <RedactedDoc text={beatText} />;
-    case "stamp_reveal":
-      return (
-        <StampReveal
-          src={src}
-          isVideo={isVideo}
-          text={stampText ?? deriveStampText(beatText)}
-        />
-      );
+    case "stamp_reveal": {
+      // Only render the text plate when we can extract something meaningful
+      // (a 4-digit year or a 3+ digit number from the beat). Falling back to
+      // generic "FILED" / "CONFIRMED" strings produced random-looking labels
+      // across runs and the agent had no way to know what would land — better
+      // to suppress the plate entirely and let the asset carry the beat.
+      const derived = stampText ?? deriveStampText(beatText);
+      if (!derived) {
+        return <Polaroid src={src} isVideo={isVideo} />;
+      }
+      return <StampReveal src={src} isVideo={isVideo} text={derived} />;
+    }
     case "index_card":
       return <IndexCard text={beatText} />;
     case "newsprint_clip":
@@ -107,14 +111,21 @@ export function SceneRenderer({
   }
 }
 
-// Pull a 4-digit year out of the beat text, or fall back to a short verdict.
-function deriveStampText(beatText: string): string {
+// Pull a meaningful stamp string out of the beat text. Years (1600-2099) win;
+// otherwise a 3+ digit number (death count, percentage, distance, etc.). Returns
+// null if nothing extractable — the caller suppresses the plate in that case
+// rather than rendering a random-looking generic verdict.
+function deriveStampText(beatText: string): string | null {
   const yearMatch = beatText.match(/\b(1[6-9]\d{2}|20\d{2})\b/);
   if (yearMatch) {
     return yearMatch[1];
   }
-  const verdicts = ["FILED", "CONFIRMED", "ON RECORD", "VERIFIED"];
-  return verdicts[beatText.length % verdicts.length];
+  // Big number with optional unit/% — "2,209 dead" → "2,209"; "99%" → "99%"
+  const numMatch = beatText.match(/\b(\d{1,3}(?:,\d{3})+|\d{3,})(%|)\b/);
+  if (numMatch) {
+    return numMatch[1] + numMatch[2];
+  }
+  return null;
 }
 
 // Try to detect a place-name from the beat. We look for capitalised tokens

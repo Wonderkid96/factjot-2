@@ -16,7 +16,7 @@ from src.core.paths import BRAND_DIR, OUTPUT_DIR
 from src.core.run_id import new_run_id
 from src.pipelines.base import Pipeline
 from src.pipelines.models import (
-    Brief, Script, MediaSet, MediaAsset, Verification, Platform, VisualBrief
+    Brief, Script, MediaSet, MediaAsset, Verification, Platform, VisualBrief, Citation
 )
 from src.services.curation.script_writer import generate_script
 from src.services.discovery.models import DiscoveredCandidate
@@ -29,6 +29,8 @@ from src.services.sourcing.orchestrator import source_for_beat
 from src.services.state import ledgers
 from src.services.state.runs import RunContext
 from src.services.verification.vision import check_image_subject
+from src.services.verification.fact_checker import verify_claim, VerificationResult
+from src.services.verification.sources import gather_sources_for_topic
 
 
 log = get_logger("pipelines.reel_evergreen")
@@ -56,6 +58,10 @@ class ReelEvergreenPipeline(Pipeline):
         # Set by the runner from CLI flags. Both default to None.
         self.topic_override: str | None = None
         self.reuse_narration_from: str | None = None
+        # Fact-check result for the picked topic. source() populates this so
+        # verify() can return without re-running the (paid) judge.
+        self._fact_check: VerificationResult | None = None
+        self._fact_check_sources: list[Citation] = []
 
     # --- run-context plumbing ----------------------------------------
 
@@ -80,15 +86,58 @@ class ReelEvergreenPipeline(Pipeline):
         return {r["dedupe_key"] for r in recent if "dedupe_key" in r}
 
     def _pick_topic(self, candidates: list[DiscoveredCandidate]) -> DiscoveredCandidate | None:
-        """Cheapest viable pick: highest upvotes among non-recent candidates.
+        """First-passing pick: walk candidates highest-upvotes-down and return
+        the first one that passes fact-checking.
 
-        No LLM. Topic-level dedup uses the normalised text key (DiscoveredCandidate.dedupe_key).
+        Topic-level dedup uses the normalised text key. Fact-check runs the
+        existing verify_claim() against Wikipedia + the Reddit external link
+        — see src/services/verification/sources.py for the source gather.
+        Unverified candidates are skipped (logged, not raised). If every
+        candidate fails the check, returns None.
         """
         recent = self._recent_dedupe_keys()
         fresh = [c for c in candidates if c.dedupe_key not in recent]
         if not fresh:
             return None
-        return max(fresh, key=lambda c: c.upvotes)
+        fresh.sort(key=lambda c: c.upvotes, reverse=True)
+        # Bound the fact-check loop. Most reels pick within the first 3
+        # candidates; trying 10 in the worst case keeps the Haiku spend
+        # under ~$0.01 even when the top entries all fail.
+        for c in fresh[:10]:
+            result = self._fact_check_candidate(c)
+            if result.verified:
+                self._fact_check = result
+                return c
+            log.info("topic_rejected",
+                     topic=c.text[:80], reason=result.reason[:120],
+                     confidence=result.confidence)
+        return None
+
+    def _fact_check_candidate(self, c: DiscoveredCandidate) -> VerificationResult:
+        """Gather sources and ask the LLM judge whether the claim is supported.
+
+        Always permissive on errors: a network blip in source gathering
+        shouldn't kill the run. But if we genuinely can't find ≥2 sources,
+        the underlying verify_claim() rejects with "<2 sources" — which is
+        the right safety default.
+        """
+        ext_url = (c.raw_metadata or {}).get("external_url") if c.raw_metadata else None
+        sources = gather_sources_for_topic(
+            topic_text=c.text,
+            external_url=ext_url,
+            reddit_url=c.source_url,
+        )
+        self._fact_check_sources = [
+            Citation(claim=c.text, source_url=s.url, source_quote=s.snippet)
+            for s in sources
+        ]
+        try:
+            return verify_claim(c.text, [s.snippet for s in sources])
+        except Exception as e:
+            log.warning("fact_check_error", topic=c.text[:80], error=str(e)[:200])
+            # Conservative: treat errors as un-verified rather than letting
+            # the unchecked claim through to script generation.
+            return VerificationResult(verified=False, confidence=0.0, reason=f"judge error: {e}")
 
     # --- lifecycle stages --------------------------------------------
 
@@ -119,8 +168,22 @@ class ReelEvergreenPipeline(Pipeline):
         return Brief(topic=winner.text, angle="hidden / counterintuitive", pipeline_name=self.name)
 
     def verify(self, brief: Brief) -> Verification:
-        # Phase 1: non-blocking. Wikidata + multi-source fact verification land in Phase 1.1.
-        return Verification(verified=True, citations=[])
+        """Return the fact-check result source() already produced.
+
+        source() walks candidates highest-upvotes-down and picks the FIRST
+        one that survives verify_claim(). That result is cached on the
+        pipeline instance so this call doesn't re-spend Haiku tokens. If
+        source() somehow ran without populating _fact_check (e.g.
+        --topic override path), default to a "trust the operator" pass.
+        """
+        if self._fact_check is None:
+            log.info("verify_skipped", reason="topic_override_or_unset")
+            return Verification(verified=True, citations=[])
+        return Verification(
+            verified=self._fact_check.verified,
+            citations=self._fact_check_sources,
+            failures=[] if self._fact_check.verified else [self._fact_check.reason or "unverified"],
+        )
 
     def generate(self, brief: Brief) -> Script:
         return generate_script(topic=brief.topic, angle=brief.angle)

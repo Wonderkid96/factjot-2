@@ -215,6 +215,33 @@ function OutroWordmark() {
   );
 }
 
+// Outro plate — rapid fade to solid black (10 frames ≈ 333ms), then the
+// wordmark dead-centred over it. The previous version held the last beat's
+// asset at 0.55 opacity behind the wordmark, which read as cluttered;
+// Netflix-doc closes are a clean cut to black + the brand mark.
+function OutroPlate() {
+  const frame = useCurrentFrame();
+  const bgOpacity = interpolate(frame, [0, 10], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  return (
+    <>
+      <AbsoluteFill style={{
+        backgroundColor: "#000000",
+        opacity: bgOpacity,
+      }} />
+      <AbsoluteFill style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}>
+        <OutroWordmark />
+      </AbsoluteFill>
+    </>
+  );
+}
+
 function GrainOverlay({ src, durationInFrames }: { src?: string | null; durationInFrames: number }) {
   if (!src) {
     return null;
@@ -280,6 +307,27 @@ export const CaseFileReel: React.FC<z.infer<typeof caseFileReelSchema>> = ({
   const INTRO_FRAMES = Math.floor(fps * INTRO_DURATION_S);
   const narrationDelay = narration_offset_frames ?? 0;
 
+  // 2-second fades on both ends for narration AND music. Each takes a frame
+  // (within its own Sequence's local time) and returns 0..1 volume.
+  const FADE_FRAMES = Math.floor(fps * 2);
+  const NARRATION_PEAK = 1.0;
+  const MUSIC_PEAK = 0.07;
+  // Narration: lives inside a Sequence from `narrationDelay`, so its local
+  // frame=0 = audio start. We don't know its exact length here (Remotion
+  // reads it from the file), so we fade in over the first 2s and trust
+  // Remotion's tail to handle the fade out via the music+outro mix.
+  const narrationVolume = (f: number) => {
+    const fadeIn = Math.min(1, f / FADE_FRAMES);
+    return NARRATION_PEAK * Math.max(0, fadeIn);
+  };
+  // Music: lives at composition-level time, fades in over first 2s and out
+  // over the last 2s before outroEnd. Total reel timeline drives the fade-out.
+  const musicVolume = (f: number) => {
+    const fadeIn = Math.min(1, f / FADE_FRAMES);
+    const fadeOut = Math.min(1, Math.max(0, (outroEnd - f) / FADE_FRAMES));
+    return MUSIC_PEAK * Math.min(fadeIn, fadeOut);
+  };
+
   return (
     <AbsoluteFill style={{ backgroundColor: palette.ink }}>
       {/* Persistent desk background — case-file foundation */}
@@ -290,11 +338,11 @@ export const CaseFileReel: React.FC<z.infer<typeof caseFileReelSchema>> = ({
 
       {narration_audio && (
         <Sequence from={narrationDelay}>
-          <Audio src={narration_audio} />
+          <Audio src={narration_audio} volume={narrationVolume} />
         </Sequence>
       )}
       {music_audio && (
-        <Audio src={music_audio} volume={0.18} loop />
+        <Audio src={music_audio} volume={musicVolume} loop />
       )}
 
       {/* Hook — sits over the desk during the title hold */}
@@ -402,17 +450,11 @@ export const CaseFileReel: React.FC<z.infer<typeof caseFileReelSchema>> = ({
         );
       })}
 
-      {/* Outro wordmark — runs from outroStart through the tail buffer so the
-          final ~1.2s isn't an empty desk. The wordmark letter-pop-in finishes
-          well before the end; it then holds steady while the audio fades out. */}
+      {/* Outro — background fades to near-solid black in ~10 frames so the
+          last beat's asset clears out, then the wordmark holds dead-centre
+          (no paddingBottom offset). */}
       <Sequence from={outroStart}>
-        <AbsoluteFill style={{
-          display: "flex", alignItems: "center", justifyContent: "center",
-          paddingBottom: 320,
-          backgroundColor: "rgba(0,0,0,0.55)",
-        }}>
-          <OutroWordmark />
-        </AbsoluteFill>
+        <OutroPlate />
       </Sequence>
 
       {/* Chrome (wordmark + kicker) appears after intro overlay, hidden during outro */}

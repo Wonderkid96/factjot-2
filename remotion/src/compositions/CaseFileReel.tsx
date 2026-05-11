@@ -71,7 +71,11 @@ export const caseFileReelSchema = z.object({
 });
 
 const INTRO_DURATION_S = 1.37;
-const CAPTION_TOP_FRACTION = 0.62;
+// Case-file scenes leave ~25% of vertical space empty below the scene element
+// (polaroid, document, card all centre-anchored ~510-1410). Captions land in
+// that desk negative space at 0.78 of frame height = ~1500px from top.
+// Stays clear of the Instagram bottom safe zone (~1680+).
+const CAPTION_TOP_FRACTION = 0.78;
 const FRAME_H = 1920;
 
 function isVideoUrl(p: string | null): boolean {

@@ -24,8 +24,10 @@ export function NewsprintClip({
 }: NewsprintClipProps) {
   const settle = useSettleSpring(0);
   const bounce = useImpactBounce(0);
+  // Lift above centre so the caption row at y≈1500 lands on clean desk.
+  const FINAL_Y = -100;
   const x = (1 - settle) * 1200;
-  const y = (1 - settle) * -180;
+  const y = (1 - settle) * -180 + FINAL_Y;
   const rot = (1 - settle) * 9 + finalRotation;
 
   const IMAGE_H = (width - 40) * 0.62; // wider than tall, news-photo aspect

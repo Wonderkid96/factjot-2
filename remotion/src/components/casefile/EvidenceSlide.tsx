@@ -36,8 +36,11 @@ export function EvidenceSlide({
   const startY = offCanvas[from].y;
   const startRot = startRotByDir[from];
 
+  // Sit slightly above centre so the bottom-row caption (y≈1500) clears the
+  // document by ~100px instead of overlapping its lower edge.
+  const FINAL_Y = -120;
   const x = (1 - settle) * startX;
-  const y = (1 - settle) * startY;
+  const y = (1 - settle) * startY + FINAL_Y;
   const rot = (1 - settle) * startRot + finalRotation;
 
   const height = width / aspect;

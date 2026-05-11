@@ -57,7 +57,8 @@ export function RedactedDoc({
           padding: "120px 110px",
           backgroundColor: "#f5edd6",
           boxShadow: PAPER_SHADOW,
-          transform: "rotate(-1.5deg)",
+          // -1.5deg rotation, translate up so the captionrow clears the page.
+          transform: "translateY(-120px) rotate(-1.5deg)",
           position: "relative",
           // Page texture — subtle horizontal lines like ruled paper
           backgroundImage:

@@ -9,7 +9,6 @@ import { YearAccent } from "../components/YearAccent";
 import { palette } from "../style/tokens";
 import { Desk } from "../components/casefile/Desk";
 import { SceneRenderer, SceneTreatment } from "../components/casefile/SceneRenderer";
-import { EvidenceStack } from "../components/casefile/EvidenceStack";
 
 // CaseFileReel — case-file aesthetic variant of FactReel. Same audio,
 // captions, chrome. Every beat renders via SceneRenderer instead of
@@ -49,6 +48,7 @@ export const caseFileReelSchema = z.object({
   narration_audio: z.string().nullable(),
   music_audio: z.string().nullable().optional(),
   grit_overlay: z.string().nullable().optional(),
+  ambient_overlay: z.string().nullable().optional(),
   intro_overlay: z.string().nullable().optional(),
   alignment: z.array(z.any()),
   hook_window: windowSchema.optional(),
@@ -278,10 +278,83 @@ function GrainOverlay({ src, durationInFrames }: { src?: string | null; duration
   );
 }
 
+// Ambient backdrop — slow, low-opacity loop that lives between the Desk base
+// and the case-file scenes. Subtle texture (dust, paper fibres, light shift)
+// without competing for attention. Falls through silently when no src.
+function AmbientLayer({ src, durationInFrames }: { src?: string | null; durationInFrames: number }) {
+  if (!src) {
+    return null;
+  }
+  return (
+    <AbsoluteFill style={{
+      pointerEvents: "none",
+      opacity: 0.18,
+    }}>
+      <Loop durationInFrames={Math.max(durationInFrames, 1)}>
+        <OffthreadVideo
+          src={src}
+          muted
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        />
+      </Loop>
+    </AbsoluteFill>
+  );
+}
+
+// ---------- Scrappy mission-brief stage ----------
+
+// Per-beat stage offsets — each scene sits in a deliberately slightly-off
+// position so as the four beats accumulate they read as a *stack* of related
+// items on a desk rather than four identical centred renders. The offsets
+// alternate left/right and creep down the frame so each new beat covers
+// part of the previous ones, but enough of each prior beat peeks out to be
+// recognisable. Indices wrap mod-4 so beat counts >4 still get variety.
+const STAGE_OFFSETS: Array<{ x: number; y: number; rotation: number }> = [
+  { x: -70, y: -180, rotation: -3.0 },
+  { x:  80, y: -110, rotation:  2.4 },
+  { x: -50, y:  -30, rotation: -1.8 },
+  { x:  60, y:  -90, rotation:  1.6 },
+];
+
+// Whole-stage zoom — the "camera leaning in" feel for the mission-brief look.
+// 1.06 is enough to feel intimate without clipping critical scene content.
+const STAGE_SCALE = 1.06;
+
+// Opacity of a prior beat after the next one has taken over. Visible enough
+// to read as a stacked layer, dim enough that the eye lands on the current
+// beat. 14-frame crossfade so the handoff is felt, not seen.
+const FROZEN_OPACITY = 0.42;
+const FADE_FRAMES = 14;
+
+interface StageProps {
+  offset: { x: number; y: number; rotation: number };
+  /** How many frames this scene is the ACTIVE one. After that it freezes at FROZEN_OPACITY. */
+  activeFrames: number;
+  children: React.ReactNode;
+}
+
+function Stage({ offset, activeFrames, children }: StageProps) {
+  const frame = useCurrentFrame();
+  const opacity = interpolate(
+    frame,
+    [activeFrames - FADE_FRAMES, activeFrames],
+    [1.0, FROZEN_OPACITY],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+  );
+  return (
+    <AbsoluteFill style={{
+      transform: `translate(${offset.x}px, ${offset.y}px) rotate(${offset.rotation}deg)`,
+      opacity,
+    }}>
+      {children}
+    </AbsoluteFill>
+  );
+}
+
 // ---------- Composition ----------
 
 export const CaseFileReel: React.FC<z.infer<typeof caseFileReelSchema>> = ({
-  hook, cta, narration_audio, music_audio, grit_overlay, beats, intro_overlay,
+  hook, cta, narration_audio, music_audio, grit_overlay, ambient_overlay, beats, intro_overlay,
   hook_window, cta_window, outro_window,
   narration_offset_frames, kicker,
 }) => {
@@ -295,22 +368,13 @@ export const CaseFileReel: React.FC<z.infer<typeof caseFileReelSchema>> = ({
   const INTRO_FRAMES = Math.floor(fps * INTRO_DURATION_S);
   const narrationDelay = narration_offset_frames ?? 0;
 
-  // Build evidence-stack items. Each beat gets filed AFTER it ends — the
-  // stack only shows beats that have already played. This gives the "filing
-  // away" feel: the polaroid you just saw flies into the corner as the next
-  // beat starts.
-  const stackItems = beats
-    .filter((b) => b.asset?.path)
-    .map((b) => ({
-      src: b.asset.path as string,
-      isVideo: isVideoUrl(b.asset.path),
-      startFrame: b.end_frame,
-    }));
-
   return (
     <AbsoluteFill style={{ backgroundColor: palette.ink }}>
       {/* Persistent desk background — case-file foundation */}
       <Desk />
+
+      {/* Ambient backdrop — sits between desk and scenes at 0.18 opacity */}
+      <AmbientLayer src={ambient_overlay} durationInFrames={Math.max(outroEnd, 60)} />
 
       {narration_audio && (
         <Sequence from={narrationDelay}>
@@ -326,39 +390,45 @@ export const CaseFileReel: React.FC<z.infer<typeof caseFileReelSchema>> = ({
         <Hook text={hook} />
       </Sequence>
 
-      {/* Per-beat scenes — each beat's Sequence wraps its SceneRenderer */}
-      {beats.map((beat, i) => {
-        const path = beat.asset?.path ?? null;
-        const isVideo = isVideoUrl(path);
-        const isLast = i === beats.length - 1;
-        const naturalDuration = Math.max(beat.end_frame - beat.start_frame, fps);
-        const extendedEnd = isLast ? Math.max(outroEnd, beat.end_frame) : beat.end_frame;
-        const duration = Math.max(extendedEnd - beat.start_frame, naturalDuration);
+      {/* Stage container — scale-zoomed for the "leaned-in mission brief" feel.
+          Each beat's Sequence persists from its start through outroStart so
+          prior beats remain visible (faded) behind the current one, giving
+          the scrappy stacked-evidence look. */}
+      <AbsoluteFill style={{
+        transform: `scale(${STAGE_SCALE})`,
+        transformOrigin: "center 42%",
+      }}>
+        {beats.map((beat, i) => {
+          const path = beat.asset?.path ?? null;
+          const isVideo = isVideoUrl(path);
+          const nextStart = i + 1 < beats.length ? beats[i + 1].start_frame : outroStart;
+          // Length of THIS beat as "active" before the next one takes over.
+          const activeFrames = Math.max(nextStart - beat.start_frame, fps);
+          // Sequence runs all the way to outroStart so prior beats stay on
+          // screen (at FROZEN_OPACITY) until the outro begins.
+          const sequenceLength = Math.max(outroStart - beat.start_frame, fps);
+          const priorBeat = i > 0 ? beats[i - 1] : null;
+          const priorSrc = priorBeat?.asset?.path ?? null;
+          const priorIsVideo = isVideoUrl(priorSrc);
+          const offset = STAGE_OFFSETS[i % STAGE_OFFSETS.length];
 
-        const priorBeat = i > 0 ? beats[i - 1] : null;
-        const priorSrc = priorBeat?.asset?.path ?? null;
-        const priorIsVideo = isVideoUrl(priorSrc);
-
-        return (
-          <Sequence key={`scene-${i}`} from={beat.start_frame} durationInFrames={duration}>
-            <SceneRenderer
-              treatment={beat.scene_treatment as SceneTreatment}
-              src={path}
-              isVideo={isVideo}
-              beatText={beat.text}
-              durationFrames={duration}
-              priorSrc={priorSrc}
-              priorIsVideo={priorIsVideo}
-            />
-          </Sequence>
-        );
-      })}
-
-      {/* Evidence-stack overlay — sits above scenes, under captions/chrome.
-          Hides during the outro so the wordmark animation can breathe. */}
-      <Sequence from={0} durationInFrames={Math.max(outroStart, 1)}>
-        <EvidenceStack items={stackItems} />
-      </Sequence>
+          return (
+            <Sequence key={`scene-${i}`} from={beat.start_frame} durationInFrames={sequenceLength}>
+              <Stage offset={offset} activeFrames={activeFrames}>
+                <SceneRenderer
+                  treatment={beat.scene_treatment as SceneTreatment}
+                  src={path}
+                  isVideo={isVideo}
+                  beatText={beat.text}
+                  durationFrames={activeFrames}
+                  priorSrc={priorSrc}
+                  priorIsVideo={priorIsVideo}
+                />
+              </Stage>
+            </Sequence>
+          );
+        })}
+      </AbsoluteFill>
 
       {/* Caption chunks — same karaoke treatment as FactReel */}
       {beats.flatMap((beat, i) =>

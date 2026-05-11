@@ -339,6 +339,12 @@ def build_video_spec(
     grit_in_run = run_dir / "grit.mov" if run_dir else None
     grit_url = asset_url(grit_in_run) if grit_in_run and grit_in_run.exists() else None
 
+    # Optional ambient background — single curated loop in brand/ambient/
+    # served at low opacity between desk and scenes. Falls through silently
+    # if no file exists, so reels render fine without one.
+    ambient_in_run = run_dir / "ambient.mov" if run_dir else None
+    ambient_url = asset_url(ambient_in_run) if ambient_in_run and ambient_in_run.exists() else None
+
     return {
         "composition": composition_id,
         "title": script.title,
@@ -352,6 +358,7 @@ def build_video_spec(
         "intro_overlay": intro_url,
         "music_audio": music_url,
         "grit_overlay": grit_url,
+        "ambient_overlay": ambient_url,
         "alignment": media.narration_alignment,
         # All frame values below are ABSOLUTE — relative to start of the VIDEO,
         # which begins with a title-hold before narration. narration_offset_frames

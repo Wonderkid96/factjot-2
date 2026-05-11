@@ -88,6 +88,13 @@ def render_from_fixture(fixture_name: str, pipeline_name: str) -> Path:
     grit_brand = BRAND_DIR / "grit" / "film-grain.mov"
     if grit_brand.exists():
         shutil.copy2(grit_brand, rc.dir / "grit.mov")
+    # Optional ambient loop
+    ambient_mov = BRAND_DIR / "ambient" / "desk.mov"
+    ambient_mp4 = BRAND_DIR / "ambient" / "desk.mp4"
+    if ambient_mov.exists():
+        shutil.copy2(ambient_mov, rc.dir / "ambient.mov")
+    elif ambient_mp4.exists():
+        shutil.copy2(ambient_mp4, rc.dir / "ambient.mov")
 
     # Reconstruct the typed objects the render step expects. visual_brief and
     # citations carry no information at render time, so we synthesise minimal

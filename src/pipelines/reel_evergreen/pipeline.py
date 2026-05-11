@@ -38,6 +38,10 @@ RECENT_TOPIC_WINDOW = 90  # last N entries treated as "recent" for dedup
 INTRO_OVERLAY_PATH = BRAND_DIR / "intros" / "factjot_intro.mov"
 MUSIC_PATH = BRAND_DIR / "music" / "default.mp3"
 GRIT_OVERLAY_PATH = BRAND_DIR / "grit" / "film-grain.mov"
+# Optional curated ambient loop. Sits at low opacity behind the case-file
+# scenes for atmosphere. .mov preferred (alpha-friendly) but .mp4 works too.
+AMBIENT_PATH_MOV = BRAND_DIR / "ambient" / "desk.mov"
+AMBIENT_PATH_MP4 = BRAND_DIR / "ambient" / "desk.mp4"
 
 
 class ReelEvergreenPipeline(Pipeline):
@@ -260,6 +264,12 @@ class ReelEvergreenPipeline(Pipeline):
         # Stage V1's film-grain overlay so Remotion screen-blends it on top.
         if GRIT_OVERLAY_PATH.exists():
             shutil.copy2(GRIT_OVERLAY_PATH, rc.dir / "grit.mov")
+        # Stage the optional ambient loop (preferred .mov, fall back .mp4).
+        # If neither exists the case-file desk simply renders without ambient.
+        if AMBIENT_PATH_MOV.exists():
+            shutil.copy2(AMBIENT_PATH_MOV, rc.dir / "ambient.mov")
+        elif AMBIENT_PATH_MP4.exists():
+            shutil.copy2(AMBIENT_PATH_MP4, rc.dir / "ambient.mov")
 
         video_path = render_via_remotion(script, media, rc.video_path, composition_id=self.remotion_composition)
 

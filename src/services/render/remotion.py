@@ -11,7 +11,7 @@ from src.core.paths import REMOTION_DIR
 from src.pipelines.models import Script, MediaSet
 
 
-WORDS_PER_CAPTION_CHUNK = 3   # Punchier rhythm, TikTok-standard. Lower than 4-word chunks reads faster on small screens.
+WORDS_PER_CAPTION_CHUNK = 5   # 5 keeps chunks on screen long enough that text swaps don't read as flicker. Below 4 reads jumpy.
 TITLE_HOLD_SECONDS = 2.5      # Hold the hook on screen before narration starts (Toby's request, v1 used 1.5)
 # MP3 encoding adds a small latency that alignment timestamps don't account for —
 # raw alignment says "word starts at 1.20s" but the MP3 plays it at 1.40s. We display
@@ -25,41 +25,59 @@ OUTRO_TEXT = "Follow fact jot for more facts."
 TAIL_BUFFER_SECONDS = 1.2
 
 
+KARAOKE_LEAD_FRAMES = 2          # ~67ms lead on word highlight (audio lags visual perception)
+EMPHASIS_PATTERN = ("0","1","2","3","4","5","6","7","8","9")
+
+
+def _has_digit(word: str) -> bool:
+    """True if the word contains any digit — used to flag stat/year emphasis."""
+    return any(c in EMPHASIS_PATTERN for c in word)
+
+
 def _chunks_from_alignment(words: list[dict], fps: int, f) -> list[dict]:
-    """Group an alignment slice into caption chunks.
+    """Group an alignment slice into chained caption chunks.
 
     Each chunk holds 1-WORDS_PER_CAPTION_CHUNK words of spoken text. Chunks
-    are CLOSED early when a word's text ends with strong punctuation
-    (`.`, `,`, `;`, `:`, `?`, `!`) so captions break on natural phrase
-    boundaries instead of mid-clause.
+    CLOSE on natural phrase boundaries (`.`, `,`, `;`, `:`, `?`, `!`) so
+    captions don't break mid-clause.
 
-    Every chunk returns:
-      - text:        joined spoken text (from alignment, not beat.text)
-      - start_frame: f(first word.start)
-      - end_frame:   f(last  word.end)
-      - words:       list of {text, start_frame, end_frame} for per-word
-                     highlighting inside the chunk
+    Chained: each chunk's `end_frame` extends to the NEXT chunk's
+    `start_frame` so there is no gap on screen between captions — eliminates
+    the flicker that comes from ElevenLabs silences between words.
+
+    Per-word entries include:
+      - text:        the spoken word
+      - start_frame: f(start) - KARAOKE_LEAD_FRAMES (highlight leads audio)
+      - end_frame:   f(end)
+      - emphasis:    True if the word contains a digit (stats, years)
+
+    Last word's `end_frame` is held to the chunk's end so the highlight
+    doesn't snap back to white during the chain-extension.
     """
-    BREAK_CHARS = (".", ",", ";", ":", "?", "!")
-    chunks: list[dict] = []
+    # Only break on TERMINAL punctuation. Commas split mid-clause into
+    # micro-chunks that read as flicker (e.g. "Three days later," then
+    # "the second bomb" then "fell." — three quick swaps in 2s).
+    BREAK_CHARS = (".", "?", "!")
+    raw_chunks: list[dict] = []
     cur: list[dict] = []
 
     def flush() -> None:
         if not cur:
             return
-        text = " ".join(w["word"] for w in cur)
-        chunks.append({
-            "text": text,
+        words_out = []
+        for w in cur:
+            lead = max(0, f(float(w["start"])) - KARAOKE_LEAD_FRAMES)
+            words_out.append({
+                "text": w["word"],
+                "start_frame": lead,
+                "end_frame": f(float(w["end"])),
+                "emphasis": _has_digit(w["word"]),
+            })
+        raw_chunks.append({
+            "text": " ".join(w["word"] for w in cur),
             "start_frame": f(float(cur[0]["start"])),
             "end_frame": f(float(cur[-1]["end"])),
-            "words": [
-                {
-                    "text": w["word"],
-                    "start_frame": f(float(w["start"])),
-                    "end_frame": f(float(w["end"])),
-                }
-                for w in cur
-            ],
+            "words": words_out,
         })
         cur.clear()
 
@@ -69,7 +87,17 @@ def _chunks_from_alignment(words: list[dict], fps: int, f) -> list[dict]:
         if ends_phrase or len(cur) >= WORDS_PER_CAPTION_CHUNK:
             flush()
     flush()
-    return chunks
+
+    # Chain: extend each chunk's end_frame to one frame before the next chunk
+    # so the caption stays on screen continuously through ElevenLabs silences.
+    for i in range(len(raw_chunks) - 1):
+        next_start = raw_chunks[i + 1]["start_frame"]
+        raw_chunks[i]["end_frame"] = max(raw_chunks[i]["end_frame"], next_start - 1)
+        # Hold the last word's highlight through the extension too
+        if raw_chunks[i]["words"]:
+            raw_chunks[i]["words"][-1]["end_frame"] = raw_chunks[i]["end_frame"]
+
+    return raw_chunks
 
 
 def _compute_timeline(script, alignment, fps: int = 30) -> dict:
@@ -107,8 +135,8 @@ def _compute_timeline(script, alignment, fps: int = 30) -> dict:
         return {
             "hook": {"start_frame": 0, "end_frame": int(1.5 * fps)},
             "beats": beat_dicts,
-            "cta": {"start_frame": int(60 * fps), "end_frame": int(62 * fps)},
-            "outro": {"start_frame": int(62 * fps), "end_frame": int(64 * fps)},
+            "cta": {"start_frame": int(60 * fps), "end_frame": int(62 * fps), "chunks": []},
+            "outro": {"start_frame": int(62 * fps), "end_frame": int(64 * fps), "chunks": []},
             "total_frames": int(65 * fps),
             "narration_offset_frames": int(TITLE_HOLD_SECONDS * fps),
         }
@@ -158,20 +186,41 @@ def _compute_timeline(script, alignment, fps: int = 30) -> dict:
     # CTA window — `cta_words` words AFTER beats and BEFORE outro.
     # Outro window — last `outro_words` words.
     outro_word_start = max(0, len(alignment) - outro_words)
+    cta_chunks: list[dict] = []
     if cta_words and word_idx < outro_word_start:
         cta_start = float(alignment[word_idx]["start"])
         cta_end_idx = min(word_idx + cta_words - 1, outro_word_start - 1)
         cta_end = float(alignment[cta_end_idx]["end"]) + 0.2
+        cta_chunks = _chunks_from_alignment(alignment[word_idx : cta_end_idx + 1], fps, f)
     else:
         cta_start = float(alignment[max(0, outro_word_start - 1)]["end"]) if alignment else 0.0
         cta_end = cta_start + 1.0
 
+    outro_chunks: list[dict] = []
     if outro_words and outro_word_start < len(alignment):
         outro_start = float(alignment[outro_word_start]["start"])
         outro_end = float(alignment[-1]["end"]) + 0.3
+        outro_chunks = _chunks_from_alignment(alignment[outro_word_start:], fps, f)
     else:
         outro_start = cta_end
         outro_end = outro_start + 1.5
+
+    # Cross-chunk chaining — extend the END of every chunk to the START of
+    # the next chunk in playback order, so captions never blink off between
+    # chunks (within-beat, beat-to-beat, beat-to-CTA, CTA-to-outro).
+    # Build the in-order chunk list, then chain it.
+    ordered_chunks: list[dict] = []
+    for bd in beat_dicts:
+        ordered_chunks.extend(bd.get("chunks") or [])
+    ordered_chunks.extend(cta_chunks)
+    ordered_chunks.extend(outro_chunks)
+    for i in range(len(ordered_chunks) - 1):
+        next_start = ordered_chunks[i + 1]["start_frame"]
+        if ordered_chunks[i]["end_frame"] < next_start - 1:
+            ordered_chunks[i]["end_frame"] = next_start - 1
+            # Hold the last word's highlight through the extension
+            if ordered_chunks[i].get("words"):
+                ordered_chunks[i]["words"][-1]["end_frame"] = ordered_chunks[i]["end_frame"]
 
     # total_frames must NOT use f() — f() bakes in SUBTITLE_SYNC_OFFSET_SECONDS
     # which is a negative caption-display nudge, not audio-clock truth.
@@ -182,8 +231,8 @@ def _compute_timeline(script, alignment, fps: int = 30) -> dict:
     return {
         "hook": {"start_frame": 0, "end_frame": f(hook_end)},
         "beats": beat_dicts,
-        "cta": {"start_frame": f(cta_start), "end_frame": f(cta_end)},
-        "outro": {"start_frame": f(outro_start), "end_frame": f(outro_end)},
+        "cta": {"start_frame": f(cta_start), "end_frame": f(cta_end), "chunks": cta_chunks},
+        "outro": {"start_frame": f(outro_start), "end_frame": f(outro_end), "chunks": outro_chunks},
         "total_frames": total_frames,
         "narration_offset_frames": int(title_hold * fps),
     }
@@ -281,6 +330,15 @@ def build_video_spec(
     intro_in_run = run_dir / "intro.mov" if run_dir else None
     intro_url = asset_url(intro_in_run) if intro_in_run and intro_in_run.exists() else None
 
+    # Background music — V1's default.mp3 sits at 20% volume under the VO.
+    music_in_run = run_dir / "music.mp3" if run_dir else None
+    music_url = asset_url(music_in_run) if music_in_run and music_in_run.exists() else None
+
+    # V1 film-grain overlay — screen-blended at ~65% opacity per V1's
+    # reel_composer.py default. Replaces the SVG fractalNoise approach.
+    grit_in_run = run_dir / "grit.mov" if run_dir else None
+    grit_url = asset_url(grit_in_run) if grit_in_run and grit_in_run.exists() else None
+
     return {
         "composition": composition_id,
         "title": script.title,
@@ -292,6 +350,8 @@ def build_video_spec(
         "kicker": _derive_kicker(script),
         "narration_audio": asset_url(narration),
         "intro_overlay": intro_url,
+        "music_audio": music_url,
+        "grit_overlay": grit_url,
         "alignment": media.narration_alignment,
         # All frame values below are ABSOLUTE — relative to start of the VIDEO,
         # which begins with a title-hold before narration. narration_offset_frames

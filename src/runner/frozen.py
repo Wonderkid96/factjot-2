@@ -73,6 +73,22 @@ def render_from_fixture(fixture_name: str, pipeline_name: str) -> Path:
         if f.suffix.lower() in ASSET_EXTS:
             shutil.copy2(f, rc.assets_dir / f.name)
 
+    # Brand intro overlay + music if available (pipeline normally stages these).
+    from src.core.paths import BRAND_DIR
+    intro_brand = BRAND_DIR / "intros" / "factjot_intro.mov"
+    if intro_brand.exists():
+        shutil.copy2(intro_brand, rc.dir / "intro.mov")
+    music_fixture = fixture / "music.mp3"
+    music_brand = BRAND_DIR / "music" / "default.mp3"
+    if music_fixture.exists():
+        shutil.copy2(music_fixture, rc.dir / "music.mp3")
+    elif music_brand.exists():
+        shutil.copy2(music_brand, rc.dir / "music.mp3")
+    # V1 film-grain overlay
+    grit_brand = BRAND_DIR / "grit" / "film-grain.mov"
+    if grit_brand.exists():
+        shutil.copy2(grit_brand, rc.dir / "grit.mov")
+
     # Reconstruct the typed objects the render step expects. visual_brief and
     # citations carry no information at render time, so we synthesise minimal
     # placeholders rather than persisting them in the fixture.

@@ -34,7 +34,17 @@ class ElevenLabsNarrator:
         self.settings = settings or Settings()
         self.voice_id = self.settings.elevenlabs_voice
         self.client = ElevenLabs(api_key=self.settings.elevenlabs_api_key)
-        self.model_id = "eleven_v3"
+        # V1's model + voice_settings — Toby prefers this voice flow over eleven_v3.
+        # Settings ported from Insta-bot/src/render/tts_engine.py line 605-611.
+        # Tone defaults to "shocking" because Bot-2's prompt biases toward
+        # counterintuitive / dramatic hooks.
+        self.model_id = "eleven_turbo_v2_5"
+        self.voice_settings = {
+            "stability": 0.38,           # shocking tone
+            "similarity_boost": 0.82,
+            "style": 0.42,               # shocking tone
+            "use_speaker_boost": True,
+        }
         self.speed = NARRATION_SPEED
 
     def _call_tts_api(self, text: str) -> bytes:
@@ -43,6 +53,7 @@ class ElevenLabsNarrator:
             text=text,
             model_id=self.model_id,
             output_format="mp3_44100_128",
+            voice_settings=self.voice_settings,
         )
         return b"".join(chunks)
 
@@ -74,7 +85,11 @@ class ElevenLabsNarrator:
         resp = requests.post(
             "https://api.elevenlabs.io/v1/text-to-speech/" + self.voice_id + "/with-timestamps",
             headers={"xi-api-key": self.settings.elevenlabs_api_key},
-            json={"text": text, "model_id": self.model_id},
+            json={
+                "text": text,
+                "model_id": self.model_id,
+                "voice_settings": self.voice_settings,
+            },
             timeout=120,
         )
         resp.raise_for_status()

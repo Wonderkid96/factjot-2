@@ -295,13 +295,16 @@ export const CaseFileReel: React.FC<z.infer<typeof caseFileReelSchema>> = ({
   const INTRO_FRAMES = Math.floor(fps * INTRO_DURATION_S);
   const narrationDelay = narration_offset_frames ?? 0;
 
-  // Build evidence-stack items from prior beats (skips beats with null assets).
+  // Build evidence-stack items. Each beat gets filed AFTER it ends — the
+  // stack only shows beats that have already played. This gives the "filing
+  // away" feel: the polaroid you just saw flies into the corner as the next
+  // beat starts.
   const stackItems = beats
     .filter((b) => b.asset?.path)
     .map((b) => ({
       src: b.asset.path as string,
       isVideo: isVideoUrl(b.asset.path),
-      startFrame: b.start_frame,
+      startFrame: b.end_frame,
     }));
 
   return (

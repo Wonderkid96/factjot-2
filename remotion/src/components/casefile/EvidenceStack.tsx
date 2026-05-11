@@ -49,15 +49,8 @@ export function EvidenceStack({ items, hide = false }: EvidenceStackProps) {
         if (enter <= 0.001) {
           return null;
         }
-        // Determine if this item is the CURRENTLY-displayed beat. If so, skip
-        // rendering it in the stack — the scene component already shows it
-        // at full size. The stack should only show what's been "filed away".
-        const isCurrent = i === items.length - 1
-          ? frame >= it.startFrame
-          : (items[i + 1] ? frame < items[i + 1].startFrame : false);
-        if (isCurrent) {
-          return null;
-        }
+        // startFrame is the OWNER beat's end_frame, so this item only enters
+        // after its beat is done — no need to "hide current" anymore.
 
         const rotation = i % 2 === 0 ? -6 : 5;
         const offsetX = -i * 18;
@@ -87,12 +80,12 @@ export function EvidenceStack({ items, hide = false }: EvidenceStackProps) {
               {it.isVideo ? (
                 <OffthreadVideo
                   src={it.src}
-                  style={{ width: "100%", height: "100%", objectFit: "cover", filter: isCurrent ? undefined : "grayscale(0.6)" }}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(0.4)" }}
                 />
               ) : (
                 <Img
                   src={it.src}
-                  style={{ width: "100%", height: "100%", objectFit: "cover", filter: isCurrent ? undefined : "grayscale(0.6)" }}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(0.4)" }}
                 />
               )}
             </div>
